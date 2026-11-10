@@ -14,7 +14,8 @@ void CreateSounds(xr_vector<ref_sound>& lst, pcstr buf)
 {
     string128 tmp;
     const int cnt = _GetItemCount(buf);
-    R_ASSERT(cnt <= GAMEMTL_SUBITEM_COUNT + 2);
+    // Footstep playback stores its last index in a byte and reserves 255 as a sentinel.
+    R_ASSERT(cnt <= 255);
     lst.resize(cnt);
     for (int k = 0; k < cnt; ++k)
         lst[k].create(_GetItem(buf, k, tmp), st_Effect, sg_SourceType);
