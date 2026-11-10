@@ -51,8 +51,10 @@ struct SSpecificCharacterData : CSharedResource
 
     //ранг
     CHARACTER_RANK_VALUE m_Rank{ NO_RANK };
+    CHARACTER_RANK_VALUE m_MaxRank{ NO_RANK };
     //репутация
     CHARACTER_REPUTATION_VALUE m_Reputation{ NO_REPUTATION };
+    CHARACTER_REPUTATION_VALUE m_MaxReputation{ NO_REPUTATION };
 
     //классы персонажа (военные-ветераны, ученые и т.д.)
     //к которым он принадлежит
@@ -118,6 +120,8 @@ public:
 
     CHARACTER_RANK_VALUE Rank() const;
     CHARACTER_REPUTATION_VALUE Reputation() const;
+    bool MatchesRank(CHARACTER_RANK_VALUE rank, int tolerance) const;
+    bool MatchesReputation(CHARACTER_REPUTATION_VALUE reputation, int tolerance) const;
     LPCSTR Visual() const;
 
     LPCSTR SupplySpawn() const;

@@ -125,11 +125,23 @@ void CSpecificCharacter::load_shared(LPCSTR)
     if (data()->m_Community.index() == NO_COMMUNITY_INDEX)
         xrDebug::Fatal(DEBUG_INFO, "wrong 'community' '%s' in specific character %s ", team, m_OwnId.c_str());
 
-    data()->m_Rank = pXML->ReadInt("rank", 0, NO_RANK);
-    R_ASSERT3(data()->m_Rank != NO_RANK, "'rank' field not fulfiled for specific character", m_OwnId.c_str());
-    data()->m_Reputation = pXML->ReadInt("reputation", 0, NO_REPUTATION);
-    R_ASSERT3(
-        data()->m_Reputation != NO_REPUTATION, "'reputation' field not fulfiled for specific character", m_OwnId.c_str());
+    const auto readRange = [&](pcstr key, int missing, int& minimum, int& maximum)
+    {
+        const int lower = pXML->ReadAttribInt(key, 0, "min", missing);
+        const int upper = pXML->ReadAttribInt(key, 0, "max", missing);
+        if (lower != missing && upper != missing)
+        {
+            minimum = _min(lower, upper);
+            maximum = _max(lower, upper);
+            return;
+        }
+
+        minimum = maximum = pXML->ReadInt(key, 0, missing);
+        R_ASSERT3(minimum != missing, key, m_OwnId.c_str());
+    };
+
+    readRange("rank", NO_RANK, data()->m_Rank, data()->m_MaxRank);
+    readRange("reputation", NO_REPUTATION, data()->m_Reputation, data()->m_MaxReputation);
 
     if (pXML->NavigateToNode(pXML->GetLocalRoot(), "money", 0))
     {
@@ -163,6 +175,26 @@ bool CSpecificCharacter::upgrade_mechanic() const { return data()->m_upgrade_mec
 LPCSTR CSpecificCharacter::critical_wound_weights() const { return data()->m_critical_wound_weights.c_str(); }
 
 shared_str CSpecificCharacter::terrain_sect() const { return data()->m_terrain_sect; }
-CHARACTER_RANK_VALUE CSpecificCharacter::Rank() const { return data()->m_Rank; }
-CHARACTER_REPUTATION_VALUE CSpecificCharacter::Reputation() const { return data()->m_Reputation; }
+CHARACTER_RANK_VALUE CSpecificCharacter::Rank() const
+{
+    return data()->m_Rank == data()->m_MaxRank ? data()->m_Rank : Random.randI(data()->m_Rank, data()->m_MaxRank);
+}
+CHARACTER_REPUTATION_VALUE CSpecificCharacter::Reputation() const
+{
+    return data()->m_Reputation == data()->m_MaxReputation ? data()->m_Reputation :
+        Random.randI(data()->m_Reputation, data()->m_MaxReputation);
+}
+
+bool CSpecificCharacter::MatchesRank(CHARACTER_RANK_VALUE rank, int tolerance) const
+{
+    return rank == NO_RANK ||
+        (s64(rank) > s64(data()->m_Rank) - tolerance && s64(rank) < s64(data()->m_MaxRank) + tolerance);
+}
+
+bool CSpecificCharacter::MatchesReputation(CHARACTER_REPUTATION_VALUE reputation, int tolerance) const
+{
+    return reputation == NO_REPUTATION ||
+        (s64(reputation) > s64(data()->m_Reputation) - tolerance &&
+            s64(reputation) < s64(data()->m_MaxReputation) + tolerance);
+}
 LPCSTR CSpecificCharacter::Visual() const { return data()->m_sVisual.c_str(); }
