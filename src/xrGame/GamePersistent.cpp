@@ -216,6 +216,7 @@ void CGamePersistent::UpdateGameType()
 
 void CGamePersistent::OnGameEnd()
 {
+    ambient_sound_next_time.clear();
     inherited::OnGameEnd();
 
     xr_delete(g_stalker_animation_data_storage);
@@ -237,18 +238,14 @@ void CGamePersistent::WeathersUpdate()
         {
             CEnvAmbient::SSndChannelVec& vec = env_amb->get_snd_channels();
 
-            auto I = vec.cbegin();
-            const auto E = vec.cend();
-
-            for (size_t idx = 0; I != E; ++I, ++idx)
+            for (auto* channel : vec)
             {
-                CEnvAmbient::SSndChannel& ch = **I;
-
-                if (ambient_sound_next_time[idx] == 0) // first
-                {
-                    ambient_sound_next_time[idx] = Device.dwTimeGlobal + ch.get_rnd_sound_first_time();
-                }
-                else if (Device.dwTimeGlobal > ambient_sound_next_time[idx])
+                CEnvAmbient::SSndChannel& ch = *channel;
+                // Share the timer between duplicate channel names and keep it through weather changes.
+                auto& nextTime = ambient_sound_next_time[ch.m_load_section];
+                if (nextTime == 0)
+                    nextTime = Device.dwTimeGlobal + ch.get_rnd_sound_first_time();
+                else if (Device.dwTimeGlobal > nextTime)
                 {
                     ref_sound& snd = ch.get_rnd_sound();
 
@@ -260,6 +257,9 @@ void CGamePersistent::WeathersUpdate()
                     pos.normalize().mul(ch.get_rnd_sound_dist()).add(Device.vCameraPosition);
                     pos.y += 10.f;
                     snd.play_at_pos(nullptr, pos);
+                    if (pSettings->section_exist("iwp_ambient_gain") &&
+                        pSettings->line_exist("iwp_ambient_gain", ch.m_load_section.c_str()))
+                        snd.set_volume(pSettings->r_float("iwp_ambient_gain", ch.m_load_section.c_str()));
 
 #ifdef DEBUG
                     if (!snd._handle() && !Engine.Sound.IsSoundEnabled())
@@ -268,7 +268,7 @@ void CGamePersistent::WeathersUpdate()
 
                     VERIFY(snd._handle());
                     const u32 _length_ms = iFloor(snd.get_length_sec() * 1000.0f);
-                    ambient_sound_next_time[idx] = Device.dwTimeGlobal + _length_ms + ch.get_rnd_sound_time();
+                    nextTime = Device.dwTimeGlobal + _length_ms + ch.get_rnd_sound_time();
                     //Msg("- Playing ambient sound channel [%s] file[%s]", ch.m_load_section.c_str(), snd._handle()->file_name());
                 }
             }

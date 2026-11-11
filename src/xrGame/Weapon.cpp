@@ -9,6 +9,7 @@
 #include "ActorEffector.h"
 #include "Level.h"
 #include "xrEngine/xr_level_controller.h"
+#include "xrEngine/ObjectAnimator.h"
 #include "game_cl_base.h"
 #include "Include/xrRender/Kinematics.h"
 #include "xrAICore/Navigation/ai_object_location.h"
@@ -448,8 +449,12 @@ void CWeapon::Load(LPCSTR section)
     m_zoom_params.m_fZoomRotateTime = READ_IF_EXISTS(pSettings, r_float, section, "zoom_rotate_time", ROTATION_TIME);
     // The donor tunes weapon aim with values around 6. OpenXRay uses seconds,
     // so using those values directly leaves the weapon out of alignment for several seconds.
-    if (pSettings->section_exist("iwp_hud_compat") && m_zoom_params.m_fZoomRotateTime >= 1.f)
-        m_zoom_params.m_fZoomRotateTime = 1.f / m_zoom_params.m_fZoomRotateTime;
+    if (pSettings->section_exist("iwp_hud_compat"))
+    {
+        if (m_zoom_params.m_fZoomRotateTime >= 1.f)
+            m_zoom_params.m_fZoomRotateTime = 1.f / m_zoom_params.m_fZoomRotateTime;
+        m_zoom_params.m_fZoomRotateTime = std::clamp(m_zoom_params.m_fZoomRotateTime, 0.045f, 0.10f);
+    }
 
     if (m_eScopeStatus == ALife::eAddonAttachable)
     {
@@ -1738,6 +1743,54 @@ bool CWeapon::ready_to_kill() const
         !IsMisfire() && ((GetState() == eIdle) || (GetState() == eFire) || (GetState() == eFire2)) && GetAmmoElapsed());
 }
 
+void CWeapon::ApplyIwpAimPose(Fmatrix& trans, u8 offsetIndex)
+{
+    if (!pSettings->section_exist("iwp_hud_compat"))
+        return;
+
+    shared_str config;
+    if (offsetIndex == 2)
+        config = READ_IF_EXISTS(pSettings, r_string, hud_sect, "iwp_anim_aim_idle_g", nullptr);
+    if (!config)
+        config = READ_IF_EXISTS(pSettings, r_string, hud_sect, "iwp_anim_aim_idle", nullptr);
+    if (config != m_iwpAimPoseConfig)
+    {
+        m_iwpAimPoseConfig = config;
+        m_iwpAimPose.reset();
+        if (config)
+        {
+            string_path name, path;
+            _GetItem(config.c_str(), 0, name);
+            xr_sprintf(path, "blend\\%s.anm", name);
+            if (FS.exist("$game_anims$", path))
+            {
+                string32 speed, power;
+                _GetItem(config.c_str(), 1, speed);
+                _GetItem(config.c_str(), 2, power);
+                m_iwpAimPose = std::make_unique<CObjectAnimator>();
+                m_iwpAimPose->Load(path);
+                m_iwpAimPose->Play(true);
+                m_iwpAimPose->Speed() = *speed ? atof(speed) : 1.f;
+                m_iwpAimPosePower = *power ? atof(power) : 1.f;
+            }
+        }
+    }
+
+    if (!m_iwpAimPose)
+        return;
+
+    // These authored object motions align the sight in addition to the hand animation.
+    m_iwpAimPose->Update(Device.fTimeDelta);
+    const float weight = m_zoom_params.m_fZoomRotationFactor * m_iwpAimPosePower;
+    Fmatrix pose = m_iwpAimPose->XFORM();
+    pose.mul(weight);
+    pose.m[0][0] += 1.f - weight;
+    pose.m[1][1] += 1.f - weight;
+    pose.m[2][2] += 1.f - weight;
+    pose.m[3][3] = 1.f;
+    trans.mulB_43(pose);
+}
+
 void CWeapon::UpdateHudAdditonal(Fmatrix& trans)
 {
     CActor* pActor = smart_cast<CActor*>(H_Parent());
@@ -1748,6 +1801,13 @@ void CWeapon::UpdateHudAdditonal(Fmatrix& trans)
         (!IsZoomed() && m_zoom_params.m_fZoomRotationFactor > 0.f))
     {
         u8 idx = GetCurrentHudOffsetIdx();
+        if (pActor->IsZoomAimingMode())
+            m_zoom_params.m_fZoomRotationFactor += Device.fTimeDelta / m_zoom_params.m_fZoomRotateTime;
+        else
+            m_zoom_params.m_fZoomRotationFactor -= Device.fTimeDelta / m_zoom_params.m_fZoomRotateTime;
+
+        clamp(m_zoom_params.m_fZoomRotationFactor, 0.f, 1.f);
+
         //		if(idx==0)					return;
 
         attachable_hud_item* hi = HudItemData();
@@ -1773,13 +1833,7 @@ void CWeapon::UpdateHudAdditonal(Fmatrix& trans)
 
         hud_rotation.translate_over(curr_offs);
         trans.mulB_43(hud_rotation);
-
-        if (pActor->IsZoomAimingMode())
-            m_zoom_params.m_fZoomRotationFactor += Device.fTimeDelta / m_zoom_params.m_fZoomRotateTime;
-        else
-            m_zoom_params.m_fZoomRotationFactor -= Device.fTimeDelta / m_zoom_params.m_fZoomRotateTime;
-
-        clamp(m_zoom_params.m_fZoomRotationFactor, 0.f, 1.f);
+        ApplyIwpAimPose(trans, idx);
     }
 }
 

@@ -17,6 +17,11 @@ protected:
     virtual void PlayAnimIdle();
     virtual void PlayAnimIdleMoving();
     virtual void PlayAnimIdleSprint();
+    pcstr IwpSprintVariant() const override
+    {
+        static constexpr pcstr variants[]{"_0", "_1", "_2"};
+        return variants[std::min(m_magazine.size(), size_t(2))];
+    }
     virtual void PlayAnimShow();
     virtual void PlayAnimHide();
     virtual void PlayAnimBore();

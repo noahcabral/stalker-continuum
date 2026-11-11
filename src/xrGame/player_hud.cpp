@@ -826,8 +826,22 @@ void player_hud::update_inertion(Fmatrix& trans) const
             _origin_offset *= power_factor;
         }
 
-        st_last_dir.mad(diff_dir, _tendto_speed * Device.fTimeDelta);
-        origin.mad(diff_dir, _origin_offset);
+        if (pSettings->section_exist("iwp_hud_compat"))
+        {
+            // A stable, fast response avoids overshooting after a hitch or a quick turn.
+            const float response = std::max(55.f, _tendto_speed * 3.f);
+            const float step = 1.f - std::exp(-response * Device.fTimeDelta);
+            st_last_dir.mad(diff_dir, step);
+            origin.mad(diff_dir, std::clamp(_origin_offset * 0.12f, -0.005f, 0.005f));
+            inertion_data.m_pitch_offset_r *= 0.12f;
+            inertion_data.m_pitch_offset_n *= 0.12f;
+            inertion_data.m_pitch_offset_d *= 0.12f;
+        }
+        else
+        {
+            st_last_dir.mad(diff_dir, _tendto_speed * Device.fTimeDelta);
+            origin.mad(diff_dir, _origin_offset);
+        }
 
         // pitch compensation
         float pitch = angle_normalize_signed(xform.k.getP());

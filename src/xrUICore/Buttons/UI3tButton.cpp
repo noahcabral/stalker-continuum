@@ -2,6 +2,8 @@
 #include "UI3tButton.h"
 #include "Hint/UIHint.h"
 
+XRUICORE_API Flags32 g_iwp_menu_sounds = {1};
+
 CUI3tButton::CUI3tButton()
 {
     m_bTextureEnable = false;
@@ -35,13 +37,13 @@ void CUI3tButton::InitSoundH(LPCSTR sound_file) { m_sound_h.create(sound_file, s
 void CUI3tButton::InitSoundT(LPCSTR sound_file) { m_sound_t.create(sound_file, st_Effect, sg_SourceType); }
 void CUI3tButton::PlaySoundT()
 {
-    if (m_sound_t._handle())
+    if (g_iwp_menu_sounds.test(1) && m_sound_t._handle())
         m_sound_t.play(NULL, sm_2D);
 }
 
 void CUI3tButton::PlaySoundH()
 {
-    if (m_sound_h._handle())
+    if (g_iwp_menu_sounds.test(1) && m_sound_h._handle())
         m_sound_h.play(NULL, sm_2D);
 }
 void CUI3tButton::InitButton(Fvector2 pos, Fvector2 size)

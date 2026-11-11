@@ -9,6 +9,9 @@ class CUIZoneMap : public CUIWindow
 {
 private:
     CUIMiniMap* m_activeMap{};
+    float m_baseZoom{};
+    float m_appliedZoom{};
+    void ApplyZoom();
 
     CUIStatic* m_compass{};
     CUIStatic m_clipFrame{ "Clip frame" };

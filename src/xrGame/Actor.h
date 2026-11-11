@@ -102,6 +102,24 @@ public:
 
     // Render
     void renderable_Render(u32 context_id, IRenderable* root) override;
+    void RenderFirstPersonBody(u32 context_id, IRenderable* root);
+
+private:
+    struct FirstPersonBodyBone
+    {
+        u16 source;
+        Fmatrix bindOffset;
+        Fmatrix pose;
+    };
+    IRenderVisual* m_firstPersonBody{};
+    IRenderVisual* m_firstPersonBodySource{};
+    shared_str m_firstPersonBodyName;
+    float m_firstPersonBodyShift{};
+    xr_vector<FirstPersonBodyBone> m_firstPersonBodyBones;
+    void UpdateFirstPersonBody();
+    void ReleaseFirstPersonBody();
+
+public:
     virtual bool renderable_ShadowGenerate();
     void feel_sound_new(IGameObject* who, int type, const CSound_UserDataPtr& user_data,
         const Fvector& position, float power) override;

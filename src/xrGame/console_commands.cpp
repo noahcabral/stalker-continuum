@@ -2205,6 +2205,25 @@ void CCC_RegisterCommands()
     CMD3(CCC_Mask, "hud_left_handed", &psHUD_Flags, HUD_LEFT_HANDED);
 
     CMD4(CCC_Float, "hud_fov", &psHUD_FOV, 0.1f, 1.0f);
+    extern float g_iwp_scope_fov, g_iwp_head_bob_factor, g_iwp_minimap_zoom;
+    extern int g_iwp_minimap_alpha;
+    extern float g_iwp_mouse_sens_aim;
+    extern Flags32 g_iwp_control_flags;
+    CMD4(CCC_Float, "mouse_sens_aim", &g_iwp_mouse_sens_aim, 0.1f, 2.f);
+    CMD3(CCC_Mask, "g_sprint_toggle", &g_iwp_control_flags, 1);
+    CMD4(CCC_Float, "scope_fov", &g_iwp_scope_fov, 0.45f, 0.85f);
+    extern u32 g_iwp_crosshair_mode, g_iwp_crosshair_type;
+    static const xr_token crosshairModes[] = {
+        {"standart_crosshair", 0}, {"collide_crosshair", 1}, {"inertion_crosshair", 2}, {nullptr, 0}};
+    static const xr_token crosshairTypes[] = {
+        {"type_crosshair_0", 0}, {"type_crosshair_1", 1}, {"type_crosshair_2", 2}, {"type_crosshair_3", 3}, {nullptr, 0}};
+    CMD3(CCC_Token, "mode_crosshair", &g_iwp_crosshair_mode, crosshairModes);
+    CMD3(CCC_Token, "type_crosshair", &g_iwp_crosshair_type, crosshairTypes);
+    extern XRUICORE_API Flags32 g_iwp_menu_sounds;
+    CMD3(CCC_Mask, "g_menu_clicks", &g_iwp_menu_sounds, 1);
+    CMD4(CCC_Float, "head_bob_factor", &g_iwp_head_bob_factor, 0.f, 2.f);
+    CMD4(CCC_Float, "rs_minimap_zoom_factor", &g_iwp_minimap_zoom, 0.3f, 3.f);
+    CMD4(CCC_Integer, "minimap_alpha", &g_iwp_minimap_alpha, 0, 255);
     CMD4(CCC_Float, "fov", &g_fov, 5.0f, 180.0f);
 
     // Demo

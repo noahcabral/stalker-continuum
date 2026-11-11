@@ -128,6 +128,12 @@ void CUIActorMenu::script_register(lua_State* luaState)
         class_<CUIActorMenu, CUIDialogWnd>("CUIActorMenu")
             .def(constructor<>())
             .def("get_drag_item", &CUIActorMenu::GetCurrentItemAsGameObject)
+            .def("GetPartner", +[](CUIActorMenu* menu) -> CScriptGameObject*
+            {
+                auto* partner = menu->GetPartner();
+                auto* object = smart_cast<CGameObject*>(partner);
+                return object ? object->lua_game_object() : nullptr;
+            })
             .def("highlight_section_in_slot", &CUIActorMenu::HighlightSectionInSlot)
             .def("highlight_for_each_in_slot", &CUIActorMenu::HighlightForEachInSlot)
             .def("refresh_current_cell_item", &CUIActorMenu::RefreshCurrentItemCell)

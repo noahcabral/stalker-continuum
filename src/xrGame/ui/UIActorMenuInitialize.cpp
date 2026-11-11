@@ -227,11 +227,54 @@ void CUIActorMenu::InitializeUniversal(CUIXml& uiXml)
     static_assert(std::size(inventory_lists) == eListCount,
         "All lists should be listed in the tuple above.");
 
+    XML_NODE inventorySlotRoot = nullptr;
+    if (pSettings->section_exist("iwp_hud_compat"))
+        inventorySlotRoot = uiXml.NavigateToNode("inventory_slot_wnd", 0);
+    const auto donorSlotIndex = [](eActorMenuListType id) -> u16
+    {
+        switch (id)
+        {
+        case eInventoryKnifeList: return KNIFE_SLOT;
+        case eInventoryPistolList: return INV_SLOT_2;
+        case eInventoryAutomaticList: return INV_SLOT_3;
+        case eInventoryOutfitList: return OUTFIT_SLOT;
+        case eInventoryHelmetList: return HELMET_SLOT;
+        case eInventoryDetectorList: return DETECTOR_SLOT;
+        case eInventoryBackpackList: return BACKPACK_SLOT;
+        default: return 0;
+        }
+    };
     for (auto [id, section, conditionIndicator, highlight, block, required] : inventory_lists)
     {
         if (!section)
             continue;
         CUIDragDropListEx*& list = m_pLists[id];
+
+        if (const auto slot = donorSlotIndex(id); inventorySlotRoot && slot)
+        {
+            XML_NODE originalRoot = uiXml.GetLocalRoot();
+            uiXml.SetLocalRoot(inventorySlotRoot);
+            if (XML_NODE slotRoot = uiXml.NavigateToNode("slot", slot - 1))
+            {
+                uiXml.SetLocalRoot(slotRoot);
+                list = UIHelper::CreateDragDropListEx(uiXml, "slot_dragdrop", this, false);
+                if (list)
+                {
+                    list->SetConditionIndicator(UIHelper::CreateProgressBar(uiXml, "slot_progress", this, false));
+                    list->SetHighlighter(UIHelper::CreateStatic(uiXml, "slot_highlight", this, false), { 0.f, 0.f });
+                }
+            }
+            uiXml.SetLocalRoot(originalRoot);
+            if (list)
+            {
+                if (id == eInventoryHelmetList || id == eInventoryBackpackList)
+                {
+                    const auto blocker = id == eInventoryHelmetList ? "helmet_over" : "backpack_over";
+                    list->SetBlocker(UIHelper::CreateStatic(uiXml, blocker, this, false), { 0.f, 0.f });
+                }
+                continue;
+            }
+        }
 
         list = UIHelper::CreateDragDropListEx(uiXml, section, this, required);
         if (!list)

@@ -77,6 +77,14 @@ protected:
     u8 m_started_rnd_anim_idx;
     bool m_bStopAtEndAnimIsRunning;
 
+    enum class IwpSprintPhase : u8 { None, Start, Loop, End };
+    IwpSprintPhase m_iwpSprintPhase{IwpSprintPhase::None};
+    shared_str m_iwpSprintMotion;
+    void ResetIwpSprint();
+    shared_str FindIwpSprintMotion(pcstr base);
+    virtual pcstr IwpSprintVariant() const { return ""; }
+    bool TryPlayIwpSprint(bool motionComplete = false);
+
 public:
     virtual void Load(LPCSTR section);
     virtual bool net_Spawn(CSE_Abstract* DC) { return true; };

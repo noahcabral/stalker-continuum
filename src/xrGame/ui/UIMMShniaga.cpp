@@ -530,7 +530,9 @@ void CUIMMShniaga::ProcessEvent(EVENT ev)
     case E_Begin:
     {
         // init whell sound
-        m_sound->whell_Play();
+        extern XRUICORE_API Flags32 g_iwp_menu_sounds;
+        if (g_iwp_menu_sounds.test(1))
+            m_sound->whell_Play();
 
         // calculate moving params
         m_start_time = Device.dwTimeContinual;
@@ -549,7 +551,9 @@ void CUIMMShniaga::ProcessEvent(EVENT ev)
     case E_Finilize:
         if (!m_flags.test(fl_SoundFinalized))
         {
-            m_sound->whell_Click();
+            extern XRUICORE_API Flags32 g_iwp_menu_sounds;
+            if (g_iwp_menu_sounds.test(1))
+                m_sound->whell_Click();
 
             m_flags.set(fl_SoundFinalized, TRUE);
         }

@@ -18,6 +18,9 @@
 #include "ui/UIInventoryUtilities.h"
 //////////////////////////////////////////////////////////////////////////
 
+float g_iwp_minimap_zoom = 1.f;
+int g_iwp_minimap_alpha = 255;
+
 CUIZoneMap::CUIZoneMap() : CUIWindow("CUIZoneMap")
 {
     AttachChild(&m_clipFrame);
@@ -137,6 +140,9 @@ void CUIZoneMap::Update(const CActor* actor)
         m_Counter_text.SetText(text_str);
     }
 
+    if (m_baseZoom > 0.f && m_appliedZoom != g_iwp_minimap_zoom)
+        ApplyZoom();
+    m_activeMap->SetTextureColor(color_rgba(255, 255, 255, g_iwp_minimap_alpha));
     UpdateRadar(Device.vCameraPosition);
     float h, p;
     Device.vCameraDirection.getHP(h, p);
@@ -194,7 +200,6 @@ void CUIZoneMap::SetupCurrentMap()
     m_clipFrame.GetAbsoluteRect(r);
     m_activeMap->WorkingArea().set(r);
 
-    Fvector2 wnd_size;
     float zoom_factor = float(m_clipFrame.GetWidth()) / 100.0f;
 
     cpcstr ln = Level().name().c_str();
@@ -207,9 +212,16 @@ void CUIZoneMap::SetupCurrentMap()
     {
         zoom_factor *= g_pGameLevel->pLevel->r_float("minimap_zoom", "value");
     }
-    wnd_size.x = m_activeMap->BoundRect().width() * zoom_factor;
-    wnd_size.y = m_activeMap->BoundRect().height() * zoom_factor;
-    m_activeMap->SetWndSize(wnd_size);
+    m_baseZoom = zoom_factor;
+    ApplyZoom();
+}
+
+void CUIZoneMap::ApplyZoom()
+{
+    m_appliedZoom = g_iwp_minimap_zoom;
+    const float zoom = m_baseZoom * m_appliedZoom;
+    m_activeMap->SetWndSize(Fvector2().set(
+        m_activeMap->BoundRect().width() * zoom, m_activeMap->BoundRect().height() * zoom));
 }
 
 void CUIZoneMap::OnSectorChanged(IRender_Sector::sector_id_t sector)

@@ -738,6 +738,7 @@ bool CActor::net_Spawn(CSE_Abstract* DC)
 
 void CActor::net_Destroy()
 {
+    ReleaseFirstPersonBody();
     ActorHudAnimator::Destroy(this);
     inherited::net_Destroy();
 

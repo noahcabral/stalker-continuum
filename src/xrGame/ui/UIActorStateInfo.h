@@ -43,6 +43,9 @@ private:
         stt_fire_wound,
         stt_shock,
         stt_power,
+        stt_thirst,
+        stt_starvation,
+        stt_sleeping,
         stt_count
     };
     ui_actor_state_item* m_state[stt_count]{};

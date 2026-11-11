@@ -6,6 +6,14 @@
 
 #include "HUDCrosshair.h"
 #include "xrUICore/ui_base.h"
+#include "Actor.h"
+#include "Inventory.h"
+#include "Weapon.h"
+#include "HUDManager.h"
+#include "xrEngine/CameraBase.h"
+
+u32 g_iwp_crosshair_mode = 0;
+u32 g_iwp_crosshair_type = 2;
 
 CHUDCrosshair::CHUDCrosshair()
 {
@@ -108,8 +116,41 @@ void CHUDCrosshair::OnRender()
     float cross_length = cross_length_perc * scr_size.x;
     float min_radius = min_radius_perc * scr_size.x;
     float max_radius = max_radius_perc * scr_size.x;
+    if (pSettings->section_exist("iwp_hud_compat"))
+    {
+        constexpr float lengths[]{0.015f, 0.001f, 0.0037f, 0.004f};
+        constexpr float radii[]{1.f, 0.f, 0.006f, 0.8f};
+        const auto style = std::min(g_iwp_crosshair_type, 3u);
+        cross_length = lengths[style] * scr_size.x;
+        min_radius = 0.f;
+        max_radius = radii[style] * scr_size.x;
+
+        if (g_iwp_crosshair_mode != 0)
+        {
+            if (auto* actor = Actor())
+            {
+                const auto* camera = actor->cam_Active();
+                Fvector origin = camera->vPosition;
+                Fvector direction = camera->vDirection;
+                if (g_iwp_crosshair_mode == 1)
+                {
+                    if (auto* weapon = smart_cast<CWeapon*>(actor->inventory().ActiveItem()))
+                        origin = weapon->get_LastFP();
+                    direction = Device.vCameraDirection;
+                }
+                const float distance = std::max(0.2f, HUD().GetCurrentRayQuery().range * 1.2f);
+                Fvector point;
+                point.mad(origin, direction, distance);
+                Fvector4 screen;
+                Device.mFullTransform.transform(screen, point);
+                if (screen.w > EPS_L)
+                    center.set((1.f + screen.x) * scr_size.x * 0.5f, (1.f - screen.y) * scr_size.y * 0.5f);
+            }
+        }
+    }
 
     clamp(target_radius, min_radius, max_radius);
+    clamp(radius, min_radius, max_radius);
 
     float x_min = min_radius + radius;
     float x_max = x_min + cross_length;

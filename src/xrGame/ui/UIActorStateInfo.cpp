@@ -78,6 +78,12 @@ void ui_actor_state_wnd::init_from_xml(CUIXml& xml, LPCSTR path)
     m_state[stt_fire_wound]->init_from_xml(xml, "fire_wound_sensor", false);
     m_state[stt_shock]->init_from_xml(xml, "shock_sensor", false);
     m_state[stt_power]->init_from_xml(xml, "power_sensor", false);
+    if (pSettings->section_exist("iwp_hud_compat"))
+    {
+        m_state[stt_thirst]->init_from_xml(xml, "thirst_state", false);
+        m_state[stt_starvation]->init_from_xml(xml, "starvation_state", false);
+        m_state[stt_sleeping]->init_from_xml(xml, "sleeping_state", false);
+    }
 
     xml.SetLocalRoot(stored_root);
 }
@@ -91,6 +97,18 @@ void ui_actor_state_wnd::UpdateActorInfo(CInventoryOwner* owner)
     float value = 0.0f;
 
     const auto& conditions = actor->conditions();
+    if (pSettings->section_exist("iwp_hud_compat"))
+    {
+        const auto updateNeed = [this](EStateType state, pcstr scriptFunction)
+        {
+            luabind::functor<float> need;
+            if (GEnv.ScriptEngine->functor(scriptFunction, need))
+                m_state[state]->set_progress(std::clamp(1.f - need(), 0.f, 1.f));
+        };
+        updateNeed(stt_thirst, "iwp_survival_needs.thirst");
+        updateNeed(stt_sleeping, "iwp_survival_needs.sleep");
+        m_state[stt_starvation]->set_progress(std::clamp(actor->conditions().GetSatiety(), 0.f, 1.f));
+    }
 
     // show stamina icon
     value = conditions.GetPower();

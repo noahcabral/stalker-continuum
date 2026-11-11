@@ -616,8 +616,19 @@ void CWeaponMagazinedWGrenade::PlayAnimReload()
         inherited::PlayAnimReload();
 }
 
+pcstr CWeaponMagazinedWGrenade::IwpSprintVariant() const
+{
+    if (!IsGrenadeLauncherAttached())
+        return inherited::IwpSprintVariant();
+    if (m_bGrenadeMode)
+        return iAmmoElapsed == 0 ? "_g_empty" : "_g";
+    return iAmmoElapsed == 0 ? "_w_gl_empty" : "_w_gl";
+}
+
 void CWeaponMagazinedWGrenade::PlayAnimIdle()
 {
+    if (TryPlayIwpSprint())
+        return;
     if (IsGrenadeLauncherAttached())
     {
         if (IsZoomed())

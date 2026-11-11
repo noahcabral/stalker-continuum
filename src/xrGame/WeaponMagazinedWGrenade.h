@@ -63,6 +63,7 @@ public:
     virtual void PlayAnimHide();
     virtual void PlayAnimReload();
     virtual void PlayAnimIdle();
+    pcstr IwpSprintVariant() const override;
     virtual void PlayAnimShoot();
     virtual void PlayAnimModeSwitch();
     virtual void PlayAnimBore();

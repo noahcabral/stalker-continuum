@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "xrUICore/XML/UITextureMaster.h"
 #include "../ScriptLevelEffects.h"
 
 #include "UIMainIngameWnd.h"
@@ -80,7 +81,15 @@ void CUIMainIngameWnd::Init()
     ZoneScoped;
 
     CUIXml uiXml;
-    uiXml.Load(CONFIG_PATH, UI_PATH, UI_PATH_DEFAULT, MAININGAME_XML);
+    pcstr layout = MAININGAME_XML;
+    if (pSettings->section_exist("iwp_hud_compat"))
+    {
+        layout = pSettings->read_if_exists<pcstr>("iwp_hud_compat", "main_hud_layout", MAININGAME_XML);
+        const pcstr atlas = pSettings->read_if_exists<pcstr>("iwp_hud_compat", "main_hud_atlas", nullptr);
+        if (atlas)
+            CUITextureMaster::ParseShTexInfo("ui\\textures_descr", atlas);
+    }
+    uiXml.Load(CONFIG_PATH, UI_PATH, UI_PATH_DEFAULT, layout);
 
     if (!CUIXmlInit::InitWindow(uiXml, "main", 0, this, false))
         SetWndSize({ UI_BASE_WIDTH, UI_BASE_HEIGHT });

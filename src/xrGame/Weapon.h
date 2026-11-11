@@ -23,6 +23,7 @@ class CParticlesObject;
 class CUIWindow;
 class CBinocularsVision;
 class CNightVisionEffector;
+class CObjectAnimator;
 
 class CWeapon : public CHudItemObject, public CShootingObject
 {
@@ -233,6 +234,7 @@ public:
     IC void SetZoomFactor(float f) { m_zoom_params.m_fCurrentZoomFactor = f; }
     virtual float CurrentZoomFactor();
     //показывает, что оружие находится в соостоянии поворота для приближенного прицеливания
+    pcstr IwpSprintVariant() const override { return iAmmoElapsed == 0 ? "_empty" : ""; }
     bool IsRotatingToZoom() const { return (m_zoom_params.m_fZoomRotationFactor < 1.f); }
     virtual u8 GetCurrentHudOffsetIdx();
 
@@ -454,6 +456,10 @@ public:
     shared_str m_unscopedVisual;
     shared_str m_unscopedHud;
     void UpdateScopeVisuals();
+    std::unique_ptr<CObjectAnimator> m_iwpAimPose;
+    shared_str m_iwpAimPoseConfig;
+    float m_iwpAimPosePower = 1.f;
+    void ApplyIwpAimPose(Fmatrix& trans, u8 offsetIndex);
 
     CWeaponAmmo* m_pCurrentAmmo;
     u8 m_ammoType;

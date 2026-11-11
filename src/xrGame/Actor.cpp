@@ -50,6 +50,7 @@
 
 #include "alife_registry_wrappers.h"
 #include "Include/xrRender/Kinematics.h"
+#include "xrCore/Animation/Bone.hpp"
 #include "Artefact.h"
 #include "CharacterPhysicsSupport.h"
 #include "material_manager.h"
@@ -229,6 +230,7 @@ CActor::CActor() : CEntityAlive(), current_ik_cam_shift(0)
 
 CActor::~CActor()
 {
+    ReleaseFirstPersonBody();
     xr_delete(m_location_manager);
     xr_delete(m_memory);
 
@@ -1033,6 +1035,7 @@ void CActor::g_Physics(Fvector& _accel, float jump, float dt)
     }
 }
 extern ENGINE_API float g_fov;
+float g_iwp_scope_fov = 0.73f;
 
 float CActor::currentFOV()
 {
@@ -1049,12 +1052,11 @@ float CActor::currentFOV()
         {
             // The donor uses 100 as the unscaled setting for irons and collimators.
             // OpenXRay interprets authored magnification values as angles.
-            if (zoomFactor <= 0.f || zoomFactor >= 100.f)
-            {
-                const float ironScale = pSettings->read_if_exists<float>("iwp_hud_compat", "iron_fov_scale", 0.85f);
-                return pWeapon->IsScopeAttached() ? g_fov : g_fov * std::clamp(ironScale, 0.5f, 1.f);
-            }
-            return std::min(g_fov, zoomFactor * 0.75f);
+            const bool neutralZoom = zoomFactor <= 0.f || zoomFactor >= 100.f;
+            if (neutralZoom && pWeapon->IsScopeAttached())
+                return g_fov;
+            // Scope FOV controls camera zoom separately from the weapon's HUD FOV.
+            return std::min(g_fov, (neutralZoom ? g_fov : zoomFactor) * g_iwp_scope_fov);
         }
         return zoomFactor * 0.75f;
     }
@@ -1230,6 +1232,8 @@ void CActor::UpdateCL()
     ActorHudAnimator::Update(this);
     if (IsFocused())
         g_player_hud->update(trans);
+
+    UpdateFirstPersonBody();
 
     if (psActorFlags.test(AF_MULTI_ITEM_PICKUP))
         m_bPickupMode = false;
@@ -1546,6 +1550,95 @@ void CActor::shedule_Update(u32 DT)
     Check_for_AutoPickUp();
 };
 #include "debug_renderer.h"
+void CActor::ReleaseFirstPersonBody()
+{
+    if (m_firstPersonBody)
+        GEnv.Render->model_Delete(m_firstPersonBody);
+    m_firstPersonBodySource = nullptr;
+    m_firstPersonBodyName = nullptr;
+    m_firstPersonBodyBones.clear();
+}
+
+void CActor::UpdateFirstPersonBody()
+{
+    if (!IsFocused() || !HUDview() || !g_Alive() || m_holder)
+        return;
+
+    const auto section = g_player_hud ? g_player_hud->section_name().c_str() : nullptr;
+    const shared_str name = section && pSettings->line_exist(section, "legs_visual") ?
+        pSettings->r_string(section, "legs_visual") : nullptr;
+    if (name != m_firstPersonBodyName || Visual() != m_firstPersonBodySource)
+    {
+        ReleaseFirstPersonBody();
+        m_firstPersonBodyName = name;
+        // I.W.P. places the headless body behind the first-person eye so the camera
+        // stays clear of the torso. Keep the authored override and donor default.
+        const float defaultShift = pSettings->read_if_exists<float>("actor_hud", "legs_shift_delta", -0.55f);
+        m_firstPersonBodyShift = section ?
+            pSettings->read_if_exists<float>(section, "legs_shift_delta", defaultShift) : defaultShift;
+        m_firstPersonBodySource = Visual();
+        string_path meshPath;
+        if (!name.size() || !FS.exist(meshPath, "$game_meshes$", name.c_str(), ".ogf"))
+            return;
+
+        auto* source = Visual() ? Visual()->dcast_PKinematics() : nullptr;
+        if (!source)
+            return;
+        m_firstPersonBody = GEnv.Render->model_Create(name.c_str());
+        auto* body = m_firstPersonBody ? m_firstPersonBody->dcast_PKinematics() : nullptr;
+        if (!body)
+        {
+            if (m_firstPersonBody)
+                GEnv.Render->model_Delete(m_firstPersonBody);
+            return;
+        }
+        xr_vector<Fmatrix> sourceBind, bodyBind;
+        source->LL_GetBindTransform(sourceBind);
+        body->LL_GetBindTransform(bodyBind);
+        m_firstPersonBodyBones.resize(body->LL_BoneCount());
+        for (u16 i = 0; i != body->LL_BoneCount(); ++i)
+        {
+            auto& bone = m_firstPersonBodyBones[i];
+            bone.source = source->LL_BoneID(body->LL_BoneName_dbg(i));
+            if (bone.source == BI_NONE)
+            {
+                Msg("! First-person body %s has unmatched bone %s", name.c_str(), body->LL_BoneName_dbg(i));
+                GEnv.Render->model_Delete(m_firstPersonBody);
+                m_firstPersonBodyBones.clear();
+                return;
+            }
+            Fmatrix inverseSourceBind;
+            inverseSourceBind.invert(sourceBind[bone.source]);
+            bone.bindOffset.mul_43(inverseSourceBind, bodyBind[i]);
+            body->LL_GetBoneInstance(i).set_callback(bctCustom, [](CBoneInstance* instance)
+            {
+                instance->mTransform = static_cast<FirstPersonBodyBone*>(instance->callback_param())->pose;
+            }, &bone, TRUE);
+        }
+    }
+    if (!m_firstPersonBody)
+        return;
+    auto* source = Visual()->dcast_PKinematics();
+    auto* body = m_firstPersonBody->dcast_PKinematics();
+    source->CalculateBones();
+    // The donor shifts its animated root along the root's own forward axis.
+    // Apply that same offset to the copied poses and leave the shadow rig alone.
+    const auto& rootPose = source->LL_GetTransform(source->LL_GetBoneRoot());
+    for (auto& bone : m_firstPersonBodyBones)
+    {
+        bone.pose.mul_43(source->LL_GetTransform(bone.source), bone.bindOffset);
+        bone.pose.c.mad(rootPose.k, m_firstPersonBodyShift);
+    }
+    body->CalculateBones_Invalidate();
+    body->CalculateBones(TRUE);
+}
+
+void CActor::RenderFirstPersonBody(u32 context_id, IRenderable* root)
+{
+    if (m_firstPersonBody && IsFocused() && HUDview() && g_Alive() && !m_holder)
+        GEnv.Render->add_Visual(context_id, root, m_firstPersonBody, XFORM());
+}
+
 void CActor::renderable_Render(u32 context_id, IRenderable* root)
 {
     VERIFY(_valid(XFORM()));

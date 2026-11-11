@@ -112,6 +112,8 @@ void CHUDManager::Render_Last(u32 context_id)
     {
         const auto root = O->H_Root();
         ScopeLock lock{ &render_lock };
+        if (auto* actor = smart_cast<CActor*>(O))
+            actor->RenderFirstPersonBody(context_id, root);
         root->renderable_HUD(true);
         O->OnHUDDraw(context_id, this, root);
         root->renderable_HUD(false);

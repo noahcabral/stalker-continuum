@@ -219,7 +219,15 @@ void CHudItem::UpdateCL()
                 m_dwMotionEndTm = 0;
                 m_dwMotionCurrTm = 0;
                 m_bStopAtEndAnimIsRunning = false;
-                OnAnimationEnd(m_startedMotionState);
+                if (m_iwpSprintPhase != IwpSprintPhase::None && m_current_motion == m_iwpSprintMotion)
+                {
+                    // Preserve the Lua callback without running a derived weapon's idle handler first.
+                    CHudItem::OnAnimationEnd(m_startedMotionState);
+                    if (!TryPlayIwpSprint(true) && GetState() == eIdle && GetHUDmode())
+                        PlayAnimIdle();
+                }
+                else
+                    OnAnimationEnd(m_startedMotionState);
             }
         }
     }
@@ -254,7 +262,12 @@ void CHudItem::OnH_A_Independent()
     StopCurrentAnimWithoutCallback();
 }
 
-void CHudItem::on_b_hud_detach() { m_sounds.StopAllSounds(); }
+void CHudItem::on_b_hud_detach()
+{
+    if (m_iwpSprintPhase != IwpSprintPhase::None)
+        StopCurrentAnimWithoutCallback();
+    m_sounds.StopAllSounds();
+}
 void CHudItem::on_a_hud_attach()
 {
     if (m_current_motion_def)
@@ -303,6 +316,8 @@ u32 CHudItem::PlayHUDMotion(const shared_str& M, const shared_str& M2, BOOL bMix
 
 u32 CHudItem::PlayHUDMotion_noCB(const shared_str& motion_name, BOOL bMixIn)
 {
+    if (m_iwpSprintPhase != IwpSprintPhase::None && motion_name != m_iwpSprintMotion)
+        ResetIwpSprint();
     m_current_motion = motion_name;
 
     if (bDebug && m_item && item().m_pInventory)
@@ -323,6 +338,7 @@ u32 CHudItem::PlayHUDMotion_noCB(const shared_str& motion_name, BOOL bMixIn)
 
 void CHudItem::StopCurrentAnimWithoutCallback()
 {
+    ResetIwpSprint();
     m_dwMotionStartTm = 0;
     m_dwMotionEndTm = 0;
     m_dwMotionCurrTm = 0;
@@ -351,6 +367,8 @@ void CHudItem::PlayAnimIdle()
 
 bool CHudItem::TryPlayAnimIdle()
 {
+    if (TryPlayIwpSprint())
+        return true;
     if (MovingAnimAllowedNow())
     {
         CActor* pActor = smart_cast<CActor*>(object().H_Parent());
@@ -428,15 +446,93 @@ void CHudItem::PlayAnimIdleSprint()
         PlayHUDMotion("anm_idle", "anim_idle", true, nullptr, GetState());
 }
 
+void CHudItem::ResetIwpSprint()
+{
+    m_iwpSprintPhase = IwpSprintPhase::None;
+    m_iwpSprintMotion = nullptr;
+}
+
+shared_str CHudItem::FindIwpSprintMotion(pcstr base)
+{
+    string64 name;
+    const pcstr variant = IwpSprintVariant();
+    if (variant && *variant)
+    {
+        strconcat(sizeof(name), name, base, variant);
+        if (isHUDAnimationExist(name, true))
+            return name;
+        // Some rifles author a shared grenade/attached-launcher clip for both ammo states.
+        if (xr_strlen(variant) > 6 && strstr(variant, "_empty"))
+        {
+            *strstr(name, "_empty") = 0;
+            if (isHUDAnimationExist(name, true))
+                return name;
+        }
+    }
+    return isHUDAnimationExist(base, true) ? shared_str(base) : shared_str{};
+}
+
+bool CHudItem::TryPlayIwpSprint(bool motionComplete)
+{
+    if (!pSettings->section_exist("iwp_hud_compat") ||
+        GetState() != eIdle || !MovingAnimAllowedNow() || !GetHUDmode())
+    {
+        ResetIwpSprint();
+        return false;
+    }
+    if (m_iwpSprintPhase == IwpSprintPhase::None && m_bStopAtEndAnimIsRunning)
+        return false;
+
+    auto* actor = smart_cast<CActor*>(object().H_Parent());
+    CEntity::SEntityState actorState;
+    actor->g_State(actorState);
+    const auto play = [this](IwpSprintPhase phase, const shared_str& motion)
+    {
+        m_iwpSprintMotion = motion;
+        m_iwpSprintPhase = phase;
+        return PlayHUDMotion(motion, TRUE, this, eIdle);
+    };
+    if (actorState.bSprint)
+    {
+        if (!motionComplete &&
+            (m_iwpSprintPhase == IwpSprintPhase::Start || m_iwpSprintPhase == IwpSprintPhase::Loop))
+            return true;
+
+        const shared_str loop = FindIwpSprintMotion("anm_sprint_idle");
+        if (!loop)
+        {
+            ResetIwpSprint();
+            return false;
+        }
+        if (m_iwpSprintPhase == IwpSprintPhase::None || m_iwpSprintPhase == IwpSprintPhase::End)
+        {
+            const shared_str start = FindIwpSprintMotion("anm_sprint_start");
+            if (start && play(IwpSprintPhase::Start, start))
+                return true;
+        }
+        play(IwpSprintPhase::Loop, loop);
+        return true;
+    }
+
+    if (m_iwpSprintPhase == IwpSprintPhase::End && !motionComplete)
+        return true;
+    if (m_iwpSprintPhase == IwpSprintPhase::Start || m_iwpSprintPhase == IwpSprintPhase::Loop)
+    {
+        const shared_str end = FindIwpSprintMotion("anm_sprint_end");
+        if (end && play(IwpSprintPhase::End, end))
+            return true;
+    }
+    ResetIwpSprint();
+    return false;
+}
+
 void CHudItem::OnMovementChanged(ACTOR_DEFS::EMoveCommand cmd)
 {
-    if (GetState() == eIdle && !m_bStopAtEndAnimIsRunning)
+    if (GetState() == eIdle && (cmd == ACTOR_DEFS::mcSprint || cmd == ACTOR_DEFS::mcAnyMove))
     {
-        if ((cmd == ACTOR_DEFS::mcSprint) || (cmd == ACTOR_DEFS::mcAnyMove))
-        {
+        if (!TryPlayIwpSprint() && !m_bStopAtEndAnimIsRunning)
             PlayAnimIdle();
-            ResetSubStateTime();
-        }
+        ResetSubStateTime();
     }
 }
 

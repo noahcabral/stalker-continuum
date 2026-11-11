@@ -35,6 +35,9 @@
 
 bool g_bAutoClearCrouch = true;
 
+float g_iwp_mouse_sens_aim = 1.f;
+Flags32 g_iwp_control_flags = {1};
+
 void CActor::IR_OnKeyboardPress(int cmd)
 {
     if (ActorHudAnimator::BlocksAction(this, cmd))
@@ -102,7 +105,9 @@ void CActor::IR_OnKeyboardPress(int cmd)
     case kJUMP: { mstate_wishful |= mcJump;
     }
     break;
-    case kSPRINT_TOGGLE: { mstate_wishful ^= mcSprint;
+    case kSPRINT_TOGGLE: {
+        if (g_iwp_control_flags.test(1))
+            mstate_wishful ^= mcSprint;
     }
     break;
     case kCROUCH_TOGGLE:
@@ -257,6 +262,10 @@ void CActor::IR_OnKeyboardRelease(int cmd)
         switch (cmd)
         {
         case kJUMP: mstate_wishful &= ~mcJump; break;
+        case kSPRINT_TOGGLE:
+            if (!g_iwp_control_flags.test(1))
+                mstate_wishful &= ~mcSprint;
+            break;
         case kDROP:
             if (GAME_PHASE_INPROGRESS == Game().Phase())
                 g_PerformDrop();
@@ -311,6 +320,10 @@ void CActor::IR_OnKeyboardHold(int cmd)
             cam_Active()->Move(cmd, 0, LookFactor);
         break;
 
+    case kSPRINT_TOGGLE:
+        if (!g_iwp_control_flags.test(1))
+            mstate_wishful |= mcSprint;
+        break;
     case kACCEL: mstate_wishful |= mcAccel; break;
     case kL_STRAFE:
     {
@@ -370,7 +383,9 @@ void CActor::IR_OnMouseMove(int dx, int dy)
     }
 
     const float LookFactor = GetLookFactor();
-    const float scale = (cam_Active()->f_fov / g_fov) * psMouseSens * psMouseSensScale / 50.f / LookFactor;
+    const auto* weapon = smart_cast<CWeapon*>(inventory().ActiveItem());
+    const float aimSensitivity = weapon && weapon->IsZoomed() ? g_iwp_mouse_sens_aim : 1.f;
+    const float scale = (cam_Active()->f_fov / g_fov) * psMouseSens * aimSensitivity * psMouseSensScale / 50.f / LookFactor;
     OnAxisMove(float(dx), float(dy), scale, scale, false, psMouseInvert.test(1));
 }
 

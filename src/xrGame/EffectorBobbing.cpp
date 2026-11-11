@@ -86,6 +86,8 @@ bool CEffectorBobbing::ProcessCam(SCamEffectorInfo& info)
             ST = m_fSpeedWalk * fTime * k;
         }
 
+        extern float g_iwp_head_bob_factor;
+        A *= g_iwp_head_bob_factor;
         float _sinA = _abs(_sin(ST) * A) * fReminderFactor;
         float _cosA = _cos(ST) * A * fReminderFactor;
 
@@ -108,3 +110,5 @@ bool CEffectorBobbing::ProcessCam(SCamEffectorInfo& info)
     //	}
     return TRUE;
 }
+
+float g_iwp_head_bob_factor = 1.f;
