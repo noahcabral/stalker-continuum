@@ -15,7 +15,8 @@ CUIMotionIcon::CUIMotionIcon() : CUIStatic("Motion Icon") {}
 bool CUIMotionIcon::Init()
 {
     CUIXml uiXml;
-    uiXml.Load(CONFIG_PATH, UI_PATH, UI_PATH_DEFAULT, MOTION_ICON_XML);
+    const pcstr layout = pSettings->read_if_exists<pcstr>("iwp_hud_compat", "motion_icon_layout", MOTION_ICON_XML);
+    uiXml.Load(CONFIG_PATH, UI_PATH, UI_PATH_DEFAULT, layout);
 
     const bool attachedToMinimap = CUIXmlInit::InitWindow(uiXml, "window", 0, this, false);
     if (attachedToMinimap)

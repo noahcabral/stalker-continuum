@@ -31,7 +31,8 @@ void CUIZoneMap::Init(bool motionIconAttached, CUIXml& maingameXml)
     ZoneScoped;
 
     CUIXml uiXml;
-    uiXml.Load(CONFIG_PATH, UI_PATH, UI_PATH_DEFAULT, "zone_map.xml");
+    const pcstr layout = pSettings->read_if_exists<pcstr>("iwp_hud_compat", "minimap_layout", "zone_map.xml");
+    uiXml.Load(CONFIG_PATH, UI_PATH, UI_PATH_DEFAULT, layout);
 
     auto* background = UIHelper::CreateStatic(uiXml, "minimap:background", this);
 
