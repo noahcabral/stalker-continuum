@@ -32,7 +32,7 @@ $null = Get-Command gh -ErrorAction Stop
 & gh auth status --hostname github.com
 if ($LASTEXITCODE) { throw 'Sign in with gh auth login using an account with access to the private repository.' }
 
-$staging = $destination + '.installing-' + [guid]::NewGuid().ToString('N')
+$staging = Join-Path (Split-Path -Parent $destination) ('.xr64-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 $null = New-Item -ItemType Directory -Path $staging
 try {
     & gh repo clone noahcabral/xr64multiplayer (Join-Path $staging 'engine-source') -- --branch iwp-compat --recurse-submodules
