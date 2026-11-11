@@ -121,7 +121,7 @@ const xr_token qminmax_sm_token[] = {{"off", 0}, {"on", 1}, {"auto", 2}, {"autod
 extern int psSkeletonUpdate;
 extern float r__dtex_range;
 
-Flags32 ps_r__common_flags = { RFLAG_ACTOR_SHADOW }; // All renders
+Flags32 ps_r__common_flags = { RFLAG_ACTOR_SHADOW | RFLAG_OPTIMIZE_SHADOWS | RFLAG_FONT_SHADOWS }; // All renders
 
 //int ps_r__Supersample = 1;
 int ps_r__LightSleepFrames = 10;
@@ -143,6 +143,9 @@ float ps_r__GLOD_ssa_end = 64.f;
 float ps_r__LOD = 0.75f;
 //float ps_r__LOD_Power = 1.5f;
 float ps_r__ssaDISCARD = 3.5f; // RO
+int ps_r__optimize_static_geom = 0;
+int ps_r__optimize_dynamic_geom = 0;
+float ps_particle_update_mod = 1.f;
 float ps_r__ssaDONTSORT = 32.f; // RO
 float ps_r__ssaHZBvsTEX = 96.f; // RO
 
@@ -765,6 +768,11 @@ void xrRender_initconsole()
 #endif // DEBUG
 
     CMD3(CCC_Mask, "r__actor_shadow", &ps_r__common_flags, RFLAG_ACTOR_SHADOW);
+    CMD3(CCC_Mask, "r__optimize_shadow_geom", &ps_r__common_flags, RFLAG_OPTIMIZE_SHADOWS);
+    CMD3(CCC_Mask, "font_shadows", &ps_r__common_flags, RFLAG_FONT_SHADOWS);
+    CMD4(CCC_Integer, "r__optimize_static_geom", &ps_r__optimize_static_geom, 0, 2);
+    CMD4(CCC_Integer, "r__optimize_dynamic_geom", &ps_r__optimize_dynamic_geom, 0, 2);
+    CMD4(CCC_Float, "particle_update_mod", &ps_particle_update_mod, 0.3f, 1.f);
 
     CMD2(CCC_tf_Aniso, "r__tf_aniso", &ps_r__tf_Anisotropic); // {1..16}
     CMD2(CCC_tf_MipBias, "r1_tf_mipbias", &ps_r__tf_Mipbias); // {-3 +3}

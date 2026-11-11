@@ -267,7 +267,10 @@ IPureServer::EConnect IPureServer::Connect(pcstr options, GameDescriptionData& g
     psNET_direct_connect = false;
 
     if (strstr(options, "/single"))
-        psNET_direct_connect = true;
+    {
+        const char* campaignLan = strstr(options, "/campaign_lan=1");
+        psNET_direct_connect = !campaignLan || (campaignLan[15] != '/' && campaignLan[15] != '\0');
+    }
 
     // Parse options
     string4096 session_name;

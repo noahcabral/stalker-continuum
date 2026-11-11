@@ -21,6 +21,11 @@ void CRender::level_Load(IReader* fs)
     R_ASSERT(g_pGameLevel);
     R_ASSERT(!b_loaded);
 
+    // Dedicated servers load collision through IGame_Level.
+    // Render sectors depend on visual buffers, which the server does not load.
+    if (GEnv.isDedicatedServer)
+        return;
+
     // Begin
     g_pGamePersistent->LoadBegin();
     Resources->DeferredLoad(TRUE);

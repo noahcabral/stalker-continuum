@@ -15,6 +15,7 @@
 #include "group_hierarchy_holder.h"
 #include "CustomZone.h"
 #include "Include/xrRender/Kinematics.h"
+#include "Include/xrRender/KinematicsAnimated.h"
 #include "detail_path_manager.h"
 #include "memory_manager.h"
 #include "visual_memory_manager.h"
@@ -316,8 +317,111 @@ void CCustomMonster::net_Import(NET_Packet& P)
     setEnabled(TRUE);
 }
 
+void CCustomMonster::ExportCampaignState(NET_Packet& packet)
+{
+    packet.w_u32(Level().timeServer());
+    packet.w_vec3(Position());
+    float yaw, pitch, roll;
+    XFORM().getHPB(yaw, pitch, roll);
+    packet.w_float(yaw);
+    packet.w_float(pitch);
+    packet.w_float(roll);
+    packet.w_float(GetfHealth());
+
+    auto* animated = smart_cast<IKinematicsAnimated*>(Visual());
+    for (u16 part = 0; part < MAX_PARTS; ++part)
+    {
+        const CBlend* cycle = nullptr;
+        if (animated && animated->partitions().part(part).Name.size())
+        {
+            for (u32 i = 0; i < animated->LL_PartBlendsCount(part); ++i)
+            {
+                const auto* blend = animated->LL_PartBlend(part, i);
+                if (blend->channel == 0 && blend->blend_state() == CBlend::eAccrue)
+                    cycle = blend;
+            }
+        }
+
+        packet.w_u32(cycle ? cycle->motionID.val : u32(-1));
+        packet.w_float(cycle ? cycle->timeCurrent : 0.f);
+        packet.w_float(cycle ? cycle->speed : 0.f);
+        packet.w_u8(cycle ? (u8(cycle->stop_at_end) | (u8(cycle->playing) << 1)) : 0);
+    }
+}
+
+void CCustomMonster::ImportCampaignState(NET_Packet& packet)
+{
+    net_update update;
+    update.dwTimeStamp = packet.r_u32();
+    if (m_campaignStateTime && s32(update.dwTimeStamp - m_campaignStateTime) <= 0)
+    {
+        packet.r_advance(CampaignStateSize - sizeof(u32));
+        return;
+    }
+
+    const bool firstSnapshot = m_campaignStateTime == 0;
+    m_campaignStateTime = update.dwTimeStamp;
+    packet.r_vec3(update.p_pos);
+    update.o_model = packet.r_float();
+    update.o_torso.yaw = update.o_model;
+    update.o_torso.pitch = -packet.r_float();
+    update.o_torso.roll = packet.r_float();
+    update.fHealth = packet.r_float();
+    SetfHealth(update.fHealth);
+    if (firstSnapshot)
+        NET.clear();
+    NET.push_back(update);
+    while (NET.size() > 4)
+        NET.pop_front();
+    NET_WasInterpolating = TRUE;
+
+    auto* animated = smart_cast<IKinematicsAnimated*>(Visual());
+    for (u16 part = 0; part < MAX_PARTS; ++part)
+    {
+        MotionID motion;
+        motion.val = packet.r_u32();
+        const float phase = packet.r_float();
+        const float speed = packet.r_float();
+        const u8 flags = packet.r_u8();
+        if (!animated || !motion.valid() || motion.slot >= animated->LL_MotionsSlotCount() ||
+            motion.idx >= animated->LL_MotionsSlot(motion.slot).motion_defs()->size() ||
+            !animated->partitions().part(part).Name.size())
+            continue;
+
+        CBlend* current = nullptr;
+        for (u32 i = 0; i < animated->LL_PartBlendsCount(part); ++i)
+        {
+            auto* blend = animated->LL_PartBlend(part, i);
+            if (blend->channel == 0 && blend->blend_state() == CBlend::eAccrue)
+                current = blend;
+        }
+        if (!current || current->motionID != motion)
+        {
+            current = animated->PlayCycle(part, motion, current != nullptr);
+            if (current)
+                current->timeCurrent = phase;
+        }
+        if (current)
+        {
+            if (std::abs(current->timeCurrent - phase) > 0.2f)
+                current->timeCurrent = phase;
+            current->speed = speed;
+            current->stop_at_end = (flags & 1) != 0;
+            current->playing = (flags & 2) != 0;
+            if (firstSnapshot && strstr(Core.Params, "-iwp_motion_trace"))
+                Msg("[COOP NPC] %u part %u motion %u", ID(), part, motion.val);
+        }
+    }
+}
+
 void CCustomMonster::shedule_Update(u32 DT)
 {
+    if (OnClient() && Remote() && IsGameTypeSingle())
+    {
+        CEntityAlive::shedule_Update(DT);
+        return;
+    }
+
     VERIFY(!g_Alive() || processing_enabled());
     // Queue shrink
     VERIFY(_valid(Position()));
@@ -510,7 +614,7 @@ void CCustomMonster::UpdateCL()
             }
             else
             {
-                if (!bfScriptAnimation())
+                if (!m_campaignStateTime && !bfScriptAnimation())
                     SelectAnimation(XFORM().k, movement().detail().direction(), movement().speed());
             }
 
@@ -782,7 +886,8 @@ bool CCustomMonster::net_Spawn(CSE_Abstract* DC)
     shedule.t_min = 100;
     shedule.t_max = 250; // This equaltiy is broken by Dima :-( // 30 * NET_Latency / 4;
 
-    m_moving_object = xr_new<moving_object>(this);
+    if (ai().get_level_graph())
+        m_moving_object = xr_new<moving_object>(this);
 
     return true;
 }
@@ -1312,7 +1417,8 @@ void CCustomMonster::spatial_move()
 {
     inherited::spatial_move();
 
-    get_moving_object()->on_object_move();
+    if (m_moving_object)
+        m_moving_object->on_object_move();
 }
 
 Fvector CCustomMonster::predict_position(const float& time_to_check) const

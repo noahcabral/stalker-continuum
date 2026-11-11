@@ -86,17 +86,12 @@ CLevel::CLevel()
     eEntitySpawn = Engine.Event.Handler_Attach("LEVEL:spawn", this);
     m_pBulletManager = xr_new<CBulletManager>();
     if (!GEnv.isDedicatedServer)
-    {
-        m_map_manager = xr_new<CMapManager>();
-        m_game_task_manager = xr_new<CGameTaskManager>();
-    }
+        PrepareCampaignState();
     m_dwDeltaUpdate = u32(fixed_step * 1000);
     m_seniority_hierarchy_holder = xr_new<CSeniorityHierarchyHolder>();
     if (!GEnv.isDedicatedServer)
     {
         m_level_sound_manager = xr_new<CLevelSoundManager>();
-        m_space_restriction_manager = xr_new<CSpaceRestrictionManager>();
-        m_client_spawn_manager = xr_new<CClientSpawnManager>();
         m_autosave_manager = xr_new<CAutosaveManager>();
 #ifdef DEBUG
         m_debug_renderer = xr_new<CDebugRenderer>();
@@ -1065,16 +1060,35 @@ bool CLevel::IsClient()
     return true;
 }
 
+void CLevel::PrepareCampaignState()
+{
+    // Dialogue and information portions drive campaign scripts on dedicated hosts too.
+    extern void init_campaign_metadata();
+    init_campaign_metadata();
+    if (!m_client_spawn_manager)
+        m_client_spawn_manager = xr_new<CClientSpawnManager>();
+    if (!m_space_restriction_manager)
+        m_space_restriction_manager = xr_new<CSpaceRestrictionManager>();
+    if (!m_map_manager)
+        m_map_manager = xr_new<CMapManager>();
+    if (!m_game_task_manager)
+        m_game_task_manager = xr_new<CGameTaskManager>();
+}
+
 void CLevel::OnAlifeSimulatorUnLoaded()
 {
-    MapManager().ResetStorage();
-    GameTaskManager().ResetStorage();
+    if (m_map_manager)
+        m_map_manager->ResetStorage();
+    if (m_game_task_manager)
+        m_game_task_manager->ResetStorage();
 }
 
 void CLevel::OnAlifeSimulatorLoaded()
 {
-    MapManager().ResetStorage();
-    GameTaskManager().ResetStorage();
+    if (m_map_manager)
+        m_map_manager->ResetStorage();
+    if (m_game_task_manager)
+        m_game_task_manager->ResetStorage();
 }
 
 void CLevel::OnSessionTerminate(pcstr reason) { MainMenu()->OnSessionTerminate(reason); }

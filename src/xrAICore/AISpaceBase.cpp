@@ -35,8 +35,6 @@ void AISpaceBase::Load(const char* levelName)
 
 void AISpaceBase::Unload(bool reload)
 {
-    if (GEnv.isDedicatedServer)
-        return;
     xr_delete(m_graph_engine);
     xr_delete(m_level_graph);
     if (!reload && m_game_graph)
@@ -45,8 +43,6 @@ void AISpaceBase::Unload(bool reload)
 
 void AISpaceBase::Initialize()
 {
-    if (GEnv.isDedicatedServer)
-        return;
     VERIFY(!m_graph_engine);
     m_graph_engine = xr_new<CGraphEngine>(1024);
     VERIFY(!m_patrol_path_storage);
@@ -97,8 +93,6 @@ void AISpaceBase::patrol_path_storage_raw(IReader& stream)
 
 void AISpaceBase::patrol_path_storage(IReader& stream)
 {
-    if (GEnv.isDedicatedServer)
-        return;
     ZoneScoped;
     xr_delete(m_patrol_path_storage);
     m_patrol_path_storage = xr_new<CPatrolPathStorage>();

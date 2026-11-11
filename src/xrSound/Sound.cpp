@@ -6,16 +6,33 @@ XRSOUND_API u32 snd_device_id = u32(-1);
 
 ISoundScene* DefaultSoundScene{};
 
+namespace
+{
+// Dedicated simulation still needs sound metadata, timing and AI hearing
+// events. No hardware targets means all emitters stay virtual.
+class DedicatedSoundCore final : public CSoundRender_Core
+{
+public:
+    using CSoundRender_Core::CSoundRender_Core;
+    void _initialize_devices_list() override {}
+    void _initialize() override { CSoundRender_Core::_initialize(); }
+    void _clear() override { CSoundRender_Core::_clear(); }
+    void set_master_volume(float) override {}
+};
+}
+
 void CSoundManager::CreateDevicesList()
 {
     ZoneScoped;
 
-    static bool noSound = strstr(Core.Params, "-nosound");
-
-    SoundRender = xr_new<CSoundRender_CoreA>(*this);
-
-    if (!noSound)
-        SoundRender->_initialize_devices_list();
+    if (GEnv.isDedicatedServer)
+        SoundRender = xr_new<DedicatedSoundCore>(*this);
+    else
+    {
+        SoundRender = xr_new<CSoundRender_CoreA>(*this);
+        if (!strstr(Core.Params, "-nosound"))
+            SoundRender->_initialize_devices_list();
+    }
 
     if (!SoundRender->bPresent)
         soundDevices.emplace_back(nullptr, -1);
@@ -27,7 +44,7 @@ void CSoundManager::Create()
 {
     ZoneScoped;
 
-    if (SoundRender->bPresent)
+    if (GEnv.isDedicatedServer || SoundRender->bPresent)
     {
         env_load();
         SoundRender->_initialize();

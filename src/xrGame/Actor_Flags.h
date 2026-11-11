@@ -15,7 +15,10 @@ enum
     AF_MULTI_ITEM_PICKUP = (1 << 11),
     AF_LOADING_STAGES = (1 << 12),
     AF_ALWAYS_USE_ATTITUDE_SENSORS = (1 << 13), // or only when zooming if false
-    AF_USE_TRACERS = (1 << 14)
+    AF_USE_TRACERS = (1 << 14),
+    AF_RELOAD_DOF = (1 << 15),
+    AF_SCOPE_DOF = (1 << 16),
+    AF_ITEM_DOF = (1 << 17)
 };
 
 extern Flags32 psActorFlags;

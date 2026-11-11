@@ -153,7 +153,7 @@ void CSE_ALifeDynamicObject::try_switch_online()
         return;
     }
 
-    if (alife().graph().actor()->o_Position.distance_to(o_Position) > alife().online_distance())
+    if (alife().DistanceToActivePlayers(o_Position) > alife().online_distance())
     {
         on_failed_switch_online();
         return;
@@ -173,7 +173,7 @@ void CSE_ALifeDynamicObject::try_switch_offline()
         return;
     }
 
-    if (alife().graph().actor()->o_Position.distance_to(o_Position) <= alife().offline_distance())
+    if (alife().DistanceToActivePlayers(o_Position) <= alife().offline_distance())
         return;
 
     alife().switch_offline(this);

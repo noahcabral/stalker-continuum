@@ -1,6 +1,8 @@
 #include "StdAfx.h"
 #include "HudItem.h"
 #include "ActorHudAnimator.h"
+#include "Actor_Flags.h"
+#include "EffectorFall.h"
 #include "xrEngine/xr_level_controller.h"
 #include "xrScriptEngine/script_engine.hpp"
 #include "physic_item.h"
@@ -11,6 +13,7 @@
 #include "Level.h"
 #include "Inventory.h"
 #include "xrEngine/CameraBase.h"
+#include "xrEngine/CustomHUD.h"
 #include "player_hud.h"
 #include "xrCore/Animation/SkeletonMotions.hpp"
 #include "xrNetServer/NET_Messages.h"
@@ -639,6 +642,12 @@ public:
         if (!duration)
             return false;
 
+        if (psActorFlags.test(AF_ITEM_DOF) && pSettings->line_exist(hud_sect, "dof"))
+        {
+            const auto dof = pSettings->r_fvector4(hud_sect, "dof");
+            if (dof.w > 0.f)
+                actor.Cameras().AddCamEffector(xr_new<CEffectorDOF>(dof));
+        }
         if (hasSound)
             m_sounds.PlaySound("animation", actor.Position(), &actor, true);
         Invoke("start_lua_callback");
@@ -693,6 +702,7 @@ public:
     bool disableInput = false;
     bool finished = false;
     bool canceled = false;
+    ref_light pdaScreenLight;
 };
 
 std::unique_ptr<UseAnimation> activeAnimation;
@@ -718,6 +728,57 @@ CActor* OwnerFor(const CHudItem* item)
 bool Active(const CActor* actor)
 {
     return activeAnimation && &activeAnimation->actor == actor && !activeAnimation->canceled;
+}
+
+void UpdatePdaScreenLight(const CActor* actor)
+{
+    if (!Active(actor) || activeAnimation->HudSection() != "iwp_pda_anim")
+        return;
+
+    auto& light = activeAnimation->pdaScreenLight;
+    auto* hud = Level().pHUD;
+    const auto* item = activeAnimation->HudItemData();
+    if (!item || !actor->HUDview() || !hud || !hud->WantsPdaTexture() || GEnv.Render->GenerationIsR1())
+    {
+        if (light)
+            light->set_active(false);
+        return;
+    }
+
+    // The LCD quad is rigidly weighted to wpn_body. These are its bind-space
+    // center and outward normal on the xrMPE mesh.
+    const u16 body = item->m_model->LL_BoneID("wpn_body");
+    if (body == BI_NONE)
+        return;
+    const auto& skin = item->m_model->LL_GetTransform_R(body);
+    Fvector center, outward;
+    skin.transform_tiny(center, Fvector().set(0.0002f, 0.0338f, 0.0077f));
+    center.sub(item->m_item_scale_pivot).mul(item->m_item_scale).add(item->m_item_scale_pivot);
+    item->m_item_transform.transform_tiny(center);
+    skin.transform_dir(outward, Fvector().set(0.f, 1.f, 0.f));
+    item->m_item_transform.transform_dir(outward);
+    outward.normalize();
+    center.mad(outward, 0.024f);
+
+    if (!light)
+    {
+        light = GEnv.Render->light_create();
+        light->set_type(IRender_Light::POINT);
+        light->set_shadow(true);
+        light->set_hud_mode(true);
+        light->set_virtual_size(0.012f);
+        const auto section = activeAnimation->HudSection();
+        const auto color = READ_IF_EXISTS(pSettings, r_fvector3, section, "screen_light_color",
+            (Fvector{ 0.24f, 0.29f, 0.34f }));
+        light->set_range(pSettings->read_if_exists<float>(section, "screen_light_range", 1.15f));
+        light->set_color(color.x, color.y, color.z);
+    }
+    light->set_position(center);
+    Fvector right;
+    skin.transform_dir(right, Fvector().set(0.f, 0.f, -1.f));
+    item->m_item_transform.transform_dir(right);
+    light->set_rotation(outward, right);
+    light->set_active(true);
 }
 
 pcstr Section(const CActor* actor)

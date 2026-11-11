@@ -395,6 +395,7 @@ protected:
 public:
     CMapManager& MapManager() const { return *m_map_manager; }
     CGameTaskManager& GameTaskManager() const { return *m_game_task_manager; }
+    void PrepareCampaignState();
     void OnAlifeSimulatorLoaded();
     void OnAlifeSimulatorUnLoaded();
 

@@ -271,7 +271,8 @@ void CActor::NewPdaContact(CInventoryOwner* pInvOwner)
     auto entityAlive = smart_cast<CEntityAlive*>(pInvOwner);
     const bool isAlive = !!entityAlive->g_Alive();
     const bool isMonster = entityAlive->cast_base_monster(); // no sound for monsters
-    CurrentGameUI()->UIMainIngameWnd->AnimateContacts(isAlive && !isMonster);
+    if (!GEnv.isDedicatedServer)
+        CurrentGameUI()->UIMainIngameWnd->AnimateContacts(isAlive && !isMonster);
 
     Level().MapManager().AddRelationLocation(pInvOwner);
 }

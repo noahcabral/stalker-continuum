@@ -199,6 +199,15 @@ void CRenderTarget::accum_spot(CBackend& cmd_list, light* L)
         float att_factor = 1.f / (att_R * att_R);
         cmd_list.set_c("Ldynamic_pos", L_pos.x, L_pos.y, L_pos.z, att_factor);
         cmd_list.set_c("Ldynamic_color", L_clr.x, L_clr.y, L_clr.z, L_spec);
+        Fvector emitterNormal{};
+        if (L->get_hud_mode())
+            Device.mView.transform_dir(emitterNormal, L->emitter_normal);
+        const auto setEmitterPlane = [&]
+        {
+            cmd_list.set_c("Lscreen_plane", emitterNormal.x, emitterNormal.y, emitterNormal.z,
+                L->get_hud_mode() ? 1.f : 0.f);
+        };
+        setEmitterPlane();
         cmd_list.set_c("m_texgen", m_Texgen);
         cmd_list.set_c("m_texgen_J", m_Texgen_J);
         cmd_list.set_c("m_shadow", m_Shadow);
@@ -221,6 +230,7 @@ void CRenderTarget::accum_spot(CBackend& cmd_list, light* L)
         {
             // per pixel
             cmd_list.set_Element(shader->E[_id]);
+            setEmitterPlane();
             cmd_list.set_Stencil(TRUE, D3DCMP_EQUAL, dwLightMarkerID, 0xff, 0x00);
             cmd_list.set_CullMode(D3DCULL_CW);
             draw_volume(cmd_list, L);
@@ -229,6 +239,7 @@ void CRenderTarget::accum_spot(CBackend& cmd_list, light* L)
             if (RImplementation.o.msaa_opt)
             {
                 cmd_list.set_Element(shader_msaa[0]->E[_id]);
+                setEmitterPlane();
                 cmd_list.set_Stencil(TRUE, D3DCMP_EQUAL, dwLightMarkerID | 0x80, 0xff, 0x00);
                 cmd_list.set_CullMode(D3DCULL_CW);
                 draw_volume(cmd_list, L);
@@ -239,6 +250,7 @@ void CRenderTarget::accum_spot(CBackend& cmd_list, light* L)
                 for (u32 i = 0; i < RImplementation.o.msaa_samples; ++i)
                 {
                     cmd_list.set_Element(shader_msaa[i]->E[_id]);
+                    setEmitterPlane();
                     cmd_list.StateManager.SetSampleMask(u32(1) << i);
                     cmd_list.set_Stencil(TRUE, D3DCMP_EQUAL, dwLightMarkerID | 0x80, 0xff, 0x00);
                     cmd_list.set_CullMode(D3DCULL_CW);

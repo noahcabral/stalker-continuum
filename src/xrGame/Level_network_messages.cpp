@@ -8,6 +8,7 @@
 
 #include "xrServer.h"
 #include "Actor.h"
+#include "CustomMonster.h"
 #include "Artefact.h"
 #include "game_cl_base_weapon_usage_statistic.h"
 #include "ai_space.h"
@@ -139,6 +140,23 @@ void CLevel::ClientReceive()
         case M_UPDATE: { game->net_import_update(*P);
         }
         break;
+        case M_CAMPAIGN_NPC_STATE:
+        {
+            if (!OnClient() || !IsGameTypeSingle() || psNET_direct_connect)
+                break;
+
+            while (P->B.count - P->r_tell() >= sizeof(u16) + CCustomMonster::CampaignStateSize)
+            {
+                const u16 id = P->r_u16();
+                auto* object = smart_cast<CGameObject*>(Objects.net_Find(id));
+                auto* npc = object ? object->cast_custom_monster() : nullptr;
+                if (npc && npc->Remote())
+                    npc->ImportCampaignState(*P);
+                else
+                    P->r_advance(CCustomMonster::CampaignStateSize);
+            }
+            break;
+        }
         case M_UPDATE_OBJECTS:
         {
             Objects.net_Import(P);

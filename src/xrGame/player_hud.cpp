@@ -217,7 +217,18 @@ bool attachable_hud_item::need_renderable() const { return m_parent_hud_item->ne
 
 void attachable_hud_item::render(u32 context_id, IRenderable* root)
 {
-    GEnv.Render->add_Visual(context_id, root, m_model->dcast_RenderVisual(), m_item_transform);
+    Fmatrix visualTransform = m_item_transform;
+    if (m_item_scale != 1.f)
+    {
+        // Scale around the authored model-space center, keeping the attachment in place.
+        Fvector centerOffset;
+        m_item_transform.transform_dir(centerOffset, m_item_scale_pivot);
+        visualTransform.c.mad(centerOffset, 1.f - m_item_scale);
+        visualTransform.i.mul(m_item_scale);
+        visualTransform.j.mul(m_item_scale);
+        visualTransform.k.mul(m_item_scale);
+    }
+    GEnv.Render->add_Visual(context_id, root, m_model->dcast_RenderVisual(), visualTransform);
     m_parent_hud_item->render_hud_mode();
 }
 
@@ -412,6 +423,8 @@ attachable_hud_item::attachable_hud_item(player_hud* parent, const shared_str& s
     m_model = smart_cast<IKinematics*>(GEnv.Render->model_Create(m_visual_name.c_str()));
 
     m_attach_place_idx = pSettings->read_if_exists<u16>(m_sect_name, "attach_place_idx", 0);
+    m_item_scale = pSettings->read_if_exists<float>(m_sect_name, "item_scale", 1.f);
+    m_item_scale_pivot = READ_IF_EXISTS(pSettings, r_fvector3, m_sect_name, "item_scale_pivot", Fvector{});
 
     IKinematicsAnimated* animatedHudItem;
     if (!m_monolithic && hands_model)
@@ -544,12 +557,17 @@ void player_hud::BeginTemporaryHands(const shared_str& section, const shared_str
     m_baseHandsSection = std::exchange(m_sect_name, section);
     m_temporaryItemSection = itemSection;
     load_ancors();
+    hands->dcast_PKinematics()->Callback([](IKinematics* skeleton)
+    {
+        static_cast<const player_hud*>(skeleton->GetUpdateCallbackParam())->MatchTemporaryHandGrips(*skeleton);
+    }, this);
 }
 
 void player_hud::EndTemporaryHands()
 {
     if (!m_baseHands)
         return;
+    m_model->dcast_PKinematics()->Callback(nullptr, nullptr);
     auto* visual = m_model->dcast_RenderVisual();
     GEnv.Render->model_Delete(visual);
     m_model = std::exchange(m_baseHands, nullptr);
@@ -560,6 +578,48 @@ void player_hud::EndTemporaryHands()
     const auto pending = std::exchange(m_nextHandsSection, shared_str{});
     if (pending)
         load(pending);
+}
+
+void player_hud::MatchTemporaryHandGrips(IKinematics& hands) const
+{
+    const auto* item = m_attached_items[0];
+    if (!item || item->m_sect_name != m_temporaryItemSection || item->m_item_scale == 1.f)
+        return;
+
+    // The authored rig attaches the device to an independent anchor. Move each arm
+    // with its grip point as the case grows, preserving the shape of hands and fingers.
+    if (item->m_attach_place_idx >= m_ancors.size())
+        return;
+    const u16 anchor = m_ancors[item->m_attach_place_idx];
+    if (anchor == BI_NONE)
+        return;
+    Fmatrix attachment;
+    attachment.mul_43(hands.LL_GetTransform(anchor), item->m_attach_offset);
+    Fvector pivot;
+    attachment.transform_tiny(pivot, item->m_item_scale_pivot);
+
+    const auto moveArm = [&](LPCSTR armName, LPCSTR gripName)
+    {
+        const u16 arm = hands.LL_BoneID(armName);
+        const u16 grip = hands.LL_BoneID(gripName);
+        if (arm == BI_NONE || grip == BI_NONE)
+            return;
+        Fvector displacement;
+        displacement.sub(hands.LL_GetTransform(grip).c, pivot).mul(item->m_item_scale - 1.f);
+        for (u16 bone = 0; bone < hands.LL_BoneCount(); ++bone)
+        {
+            u16 parent = bone;
+            while (parent != BI_NONE && parent != arm)
+                parent = hands.GetBoneData(parent).GetParentID();
+            if (parent == arm)
+            {
+                hands.LL_GetTransform(bone).c.add(displacement);
+                hands.LL_GetTransform_R(bone).c.add(displacement);
+            }
+        }
+    };
+    moveArm("l_clavicle", "l_finger01");
+    moveArm("r_clavicle", "r_finger01");
 }
 
 IKinematicsAnimated* player_hud::HandsForItem(const shared_str& section) const
@@ -758,6 +818,38 @@ void player_hud::update(const Fmatrix& cam_trans)
 
     if (item1)
         item1->update(true);
+
+    auto& bounce = g_pGamePersistent->m_pGShaderConstants->pda_thumb_bounce;
+    bounce[0].set(0.f, 0.f, 0.f, 0.f);
+    bounce[1].set(0.f, 0.f, 0.f, 0.f);
+    if (!item0 || !m_model || m_temporaryItemSection != "iwp_pda_anim")
+        return;
+
+    auto* hands = m_model->dcast_PKinematics();
+    const u16 screenBone = item0->m_model->LL_BoneID("wpn_body");
+    if (screenBone == BI_NONE)
+        return;
+    Fmatrix worldToItem, skinToBind;
+    worldToItem.invert(item0->m_item_transform);
+    skinToBind.invert(item0->m_model->LL_GetTransform_R(screenBone));
+    constexpr pcstr thumbNames[] = { "l_finger01", "r_finger01" };
+    for (u32 hand = 0; hand < 2; ++hand)
+    {
+        const u16 thumbBone = hands->LL_BoneID(thumbNames[hand]);
+        if (thumbBone == BI_NONE)
+            continue;
+        Fvector thumb;
+        m_transform.transform_tiny(thumb, hands->LL_GetTransform(thumbBone).c);
+        worldToItem.transform_tiny(thumb);
+        thumb.sub(item0->m_item_scale_pivot).div(item0->m_item_scale).add(item0->m_item_scale_pivot);
+        skinToBind.transform_tiny(thumb);
+
+        // Approximate the diffuse return from the pad of the thumb. A thumb
+        // behind the LCD cannot receive light from the emitting side.
+        const float front = thumb.y - 0.0338f;
+        const float exposure = clampr(front / 0.014f, 0.f, 1.f);
+        bounce[hand].set(thumb.x, thumb.y, thumb.z, exposure);
+    }
 }
 
 u32 player_hud::anim_play(u16 part, const MotionID& M, BOOL bMixIn, const CMotionDef*& md, float speed, IKinematicsAnimated* itemModel)

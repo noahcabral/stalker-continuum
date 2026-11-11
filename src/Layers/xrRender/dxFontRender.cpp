@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "dxFontRender.h"
+#include "xrRender_console.h"
 
 #include "xrEngine/GameFont.h"
 #include "xrCore/Text/StringConversion.hpp"
@@ -23,6 +24,13 @@ void dxFontRender::Initialize(cpcstr cShader, cpcstr cTexture)
 }
 
 void dxFontRender::OnRender(CGameFont& owner)
+{
+    if (ps_r__common_flags.test(RFLAG_FONT_SHADOWS))
+        RenderStrings(owner, true);
+    RenderStrings(owner, false);
+}
+
+void dxFontRender::RenderStrings(CGameFont& owner, bool shadow)
 {
     VERIFY(g_bRendering);
     if (pShader)
@@ -94,10 +102,16 @@ void dxFontRender::OnRender(CGameFont& owner)
                 case CGameFont::alRight: X -= iFloor(fSize); break;
                 }
 
-                const u32 clr = PS.c;
-                u32 clr2 = PS.c;
+                if (shadow)
+                {
+                    X += 1.f;
+                    Y += 1.f;
+                    Y2 += 1.f;
+                }
+                const u32 clr = shadow ? color_rgba(0, 0, 0, color_get_A(PS.c) * 3 / 4) : PS.c;
+                u32 clr2 = clr;
 
-                if (owner.uFlags & CGameFont::fsGradient)
+                if (!shadow && (owner.uFlags & CGameFont::fsGradient))
                 {
                     const u32 r = color_get_R(clr) / 2;
                     const u32 g = color_get_G(clr) / 2;

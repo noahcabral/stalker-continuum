@@ -57,6 +57,9 @@ extern ECORE_API float ps_r__GLOD_ssa_end;
 extern ECORE_API float ps_r__LOD;
 //.extern ECORE_API	float		ps_r__LOD_Power		;
 extern ECORE_API float ps_r__ssaDISCARD;
+extern int ps_r__optimize_static_geom;
+extern int ps_r__optimize_dynamic_geom;
+extern float ps_particle_update_mod;
 extern ECORE_API float ps_r__ssaDONTSORT;
 extern ECORE_API float ps_r__ssaHZBvsTEX;
 extern ECORE_API int ps_r__tf_Anisotropic;
@@ -67,6 +70,8 @@ extern ECORE_API int ps_r__clear_models_on_unload;
 enum
 {
     RFLAG_ACTOR_SHADOW = 1 << 0,
+    RFLAG_OPTIMIZE_SHADOWS = 1 << 1,
+    RFLAG_FONT_SHADOWS = 1 << 2,
 };
 
 extern ECORE_API Flags32 ps_r__common_flags;

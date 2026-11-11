@@ -8,6 +8,7 @@ public:
     Fvector4 hud_params;     // [zoom_rotate_factor, secondVP_zoom_factor, NULL, NULL] - Параметры худа оружия
     Fvector4 m_blender_mode; // x\y = [0 - default, 1 - night vision, 2 - thermo vision, ... см. common.h] - Режимы рендеринга
                              // x - основной вьюпорт, y - второй вьюпорт, z = ?, w = [0 - идёт рендер обычного объекта, 1 - идёт рендер детальных объектов (трава, мусор)]
+    Fvector4 pda_thumb_bounce[2]{}; // Casing bind-space positions and reflected-light weights.
 
     ShadersExternalData()
     {

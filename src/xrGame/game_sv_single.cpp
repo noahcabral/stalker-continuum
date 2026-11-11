@@ -7,6 +7,9 @@
 #include "alife_time_manager.h"
 #include "Common/object_broker.h"
 #include "GamePersistent.h"
+#include "Level.h"
+#include "xrAICore/Navigation/level_graph.h"
+#include "xrAICore/Navigation/game_graph.h"
 #include "xrServer.h"
 
 game_sv_Single::game_sv_Single()
@@ -19,8 +22,12 @@ game_sv_Single::~game_sv_Single() { delete_data(m_alife_simulator); }
 void game_sv_Single::Create(shared_str& options)
 {
     inherited::Create(options);
+    m_guestStartSection = get_option_s(options.c_str(), "guest_start", "");
     if (strstr(options.c_str(), "/alife"))
+    {
+        Level().PrepareCampaignState();
         m_alife_simulator = xr_new<CALifeSimulator>(&server(), &options);
+    }
     switch_Phase(GAME_PHASE_INPROGRESS);
 }
 
@@ -38,6 +45,92 @@ CSE_Abstract*		game_sv_Single::get_entity_from_eid		(u16 id)
 }
 **/
 
+void game_sv_Single::OnPlayerConnect(ClientID id)
+{
+    inherited::OnPlayerConnect(id);
+    auto* client = server().ID_to_client(id);
+    if (!m_alife_simulator || !client || client == server().GetServerClient() || client->owner)
+        return;
+
+    auto* campaignActor = alife().graph().actor();
+    if (!campaignActor)
+        return;
+
+    auto* player = static_cast<CSE_ALifeCreatureActor*>(spawn_begin("actor"));
+    player->set_specific_character(campaignActor->specific_character());
+    player->set_name_replace(client->ps->getName());
+    player->s_flags.assign(M_SPAWN_OBJECT_LOCAL | M_SPAWN_OBJECT_ASPLAYER | M_SPAWN_OBJECT_CAMPAIGN_PLAYER);
+    player->o_Position = campaignActor->o_Position;
+    player->o_Angle = campaignActor->o_Angle;
+    player->m_tNodeID = campaignActor->m_tNodeID;
+    player->m_tGraphID = campaignActor->m_tGraphID;
+    if (ai().get_level_graph())
+    {
+        const auto& graph = ai().level_graph();
+        if (m_guestStartSection.size())
+        {
+            string_path path;
+            FS.update_path(path, "$game_config$", R"(plugins\new_game_start_locations.ltx)");
+            if (FS.exist(path))
+            {
+                const CInifile starts(path);
+                const char* section = m_guestStartSection.c_str();
+                if (starts.section_exist(section))
+                {
+                    const auto vertex = starts.r_u32(section, "lvid");
+                    const auto gameVertex = starts.r_u32(section, "gvid");
+                    if (graph.valid_vertex_id(vertex) && ai().game_graph().valid_vertex_id(gameVertex) &&
+                        ai().game_graph().vertex(gameVertex)->level_id() == graph.level_id())
+                    {
+                        const Fvector start = Fvector().set(starts.r_float(section, "x"),
+                            starts.r_float(section, "y"), starts.r_float(section, "z"));
+                        const auto actualVertex = graph.vertex(vertex, start);
+                        if (graph.valid_vertex_id(actualVertex))
+                        {
+                            player->m_tNodeID = actualVertex;
+                            player->m_tGraphID = ai().cross_table().vertex(actualVertex).game_vertex_id();
+                            player->o_Position = graph.vertex_position(actualVertex);
+                        }
+                    }
+                }
+            }
+        }
+
+        const u32 clients = server().GetClientsCount();
+        if (clients > 2)
+        {
+            const u32 slot = clients - 3;
+            const Fvector origin = player->o_Position;
+            const float radius = 1.75f * (1.f + static_cast<float>(slot / 6));
+            for (u32 attempt = 0; attempt < 6; ++attempt)
+            {
+                const float angle = static_cast<float>((slot + attempt) % 6) * (PI / 3.f);
+                Fvector nearby = origin;
+                nearby.x += radius * std::cos(angle);
+                nearby.z += radius * std::sin(angle);
+                const auto vertex = graph.vertex(player->m_tNodeID, nearby);
+                if (!graph.valid_vertex_id(vertex))
+                    continue;
+
+                const Fvector candidate = graph.vertex_position(vertex);
+                if (std::abs(candidate.y - origin.y) > 0.7f || candidate.distance_to(origin) < 0.85f)
+                    continue;
+
+                player->m_tNodeID = vertex;
+                player->o_Position = candidate;
+                player->m_tGraphID = ai().cross_table().vertex(vertex).game_vertex_id();
+                break;
+            }
+        }
+    }
+
+    if (const auto* actor = spawn_end(player, id))
+    {
+        client->ps->GameID = actor->ID;
+        Msg("* Campaign guest actor %u assigned", actor->ID);
+    }
+}
+
 void game_sv_Single::OnCreate(u16 id_who)
 {
     if (!ai().get_alife())
@@ -45,6 +138,12 @@ void game_sv_Single::OnCreate(u16 id_who)
 
     CSE_Abstract* e_who = get_entity_from_eid(id_who);
     VERIFY(e_who);
+    if (e_who->s_flags.is(M_SPAWN_OBJECT_ASPLAYER) && e_who->owner &&
+        e_who->owner != server().GetServerClient())
+    {
+        e_who->m_bALifeControl = false;
+        return;
+    }
     if (!e_who->m_bALifeControl)
         return;
 

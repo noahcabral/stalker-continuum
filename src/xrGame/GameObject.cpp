@@ -73,7 +73,7 @@ CGameObject::CGameObject() : SpatialBase(g_pGamePersistent->SpatialSpace), scrip
     m_bCrPr_Activated = false;
     m_dwCrPr_ActivationStep = 0;
     m_spawn_time = 0;
-    m_ai_location = !GEnv.isDedicatedServer ? xr_new<CAI_ObjectLocation>() : 0;
+    m_ai_location = (!GEnv.isDedicatedServer || GEnv.ScriptEngine) ? xr_new<CAI_ObjectLocation>() : nullptr;
     m_server_flags.one();
 
     m_callbacks = xr_new<CALLBACK_MAP>();
@@ -519,7 +519,7 @@ bool CGameObject::net_Spawn(CSE_Abstract* DC)
     }
 
     reload(cNameSect().c_str());
-    if (!GEnv.isDedicatedServer)
+    if (!GEnv.isDedicatedServer && !(OnClient() && IsGameTypeSingle()))
         scriptBinder.reload(cNameSect().c_str());
 
     reinit();
@@ -547,6 +547,9 @@ bool CGameObject::net_Spawn(CSE_Abstract* DC)
     // if we have a parent
     if (ai().get_level_graph())
     {
+        if (!m_ai_location)
+            m_ai_location = xr_new<CAI_ObjectLocation>();
+
         if (E->ID_Parent == 0xffff)
         {
             CSE_ALifeObject* l_tpALifeObject = smart_cast<CSE_ALifeObject*>(E);

@@ -78,17 +78,14 @@ xrGameSpyServer::EConnect xrGameSpyServer::Connect(shared_str& session_name, Gam
     if (0 != *(game->get_option_s(session_name.c_str(), "psw", NULL)))
         Password._set(game->get_option_s(session_name.c_str(), "psw", NULL));
 
-    string4096 tMapName = "";
-    const char* SName = session_name.c_str();
-    strncpy_s(tMapName, session_name.c_str(), strchr(SName, '/') - SName);
-    MapName = tMapName; // = (session_name);
+    MapName = game_descr.map_name;
 
     m_iReportToMasterServer = game->get_option_i(session_name.c_str(), "public", 0);
     m_iMaxPlayers = game->get_option_i(session_name.c_str(), "maxplayers", 32);
     //	m_bCheckCDKey = game->get_option_i		(*session_name,"cdkey",0) != 0;
     m_bCheckCDKey = game->get_option_i(session_name.c_str(), "public", 0) != 0;
     //--------------------------------------------//
-    if (game->Type() != eGameIDSingle)
+    if (!psNET_direct_connect)
     {
         //----- Check for Backend Services ---
         CGameSpy_Available GSA;

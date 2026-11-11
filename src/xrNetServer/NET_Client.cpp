@@ -517,59 +517,24 @@ bool IPureClient::Connect(pcstr options)
             EnumData[0] = 0;
             xr_strcat(EnumData, "ToConnect");
             u32 EnumSize = xr_strlen(EnumData) + 1;
-            // We now have the host address so lets enum
-            u32 c_port = psCL_Port;
-            HRESULT res = S_FALSE;
-            while (res != S_OK && c_port <= END_PORT)
+            // Let DirectPlay choose an available source port unless the
+            // client explicitly requests one. Multiple guests may run on the same PC.
+            if (bPortWasSet)
             {
-                R_CHK(net_Address_device->AddComponent(DPNA_KEY_PORT, &c_port, sizeof(c_port), DPNA_DATATYPE_DWORD));
+                const u32 localPort = psCL_Port;
+                R_CHK(net_Address_device->AddComponent(DPNA_KEY_PORT, &localPort, sizeof(localPort), DPNA_DATATYPE_DWORD));
+            }
 
-                res = NET->EnumHosts(&dpAppDesc, // pApplicationDesc - for unknown reason
-                    net_Address_server, // pdpaddrHost
-                    net_Address_device, // pdpaddrDeviceInfo
-                    EnumData, EnumSize, // pvUserEnumData, size
-                    10, // dwEnumCount
-                    1000, // dwRetryInterval
-                    1000, // dwTimeOut
-                    nullptr, // pvUserContext
-                    nullptr, // pAsyncHandle
-                    DPNENUMHOSTS_SYNC // dwFlags
-                );
-
-                if (res != S_OK)
-                {
-                    //xr_string res = xrDebug::ErrorToString(HostSuccess);
-                    switch (res)
-                    {
-                    case DPNERR_INVALIDHOSTADDRESS:
-                    {
-                        OnInvalidHost();
-                        return false;
-                    }
-
-                    case DPNERR_SESSIONFULL:
-                    {
-                        OnSessionFull();
-                        return false;
-                    }
-                    } // switch (res)
-
-                    if (bPortWasSet)
-                    {
-                        Msg("! IPureClient : port %d is BUSY!", c_port);
-                        return false;
-                    }
-#ifdef DEBUG
-                    Msg("! IPureClient : port %d is BUSY!", c_port);
-
-                    //pcstr x = DXGetErrorString9(res);
-                    string1024 tmp2 = "";
-                    DXTRACE_ERR(tmp2, res);
-#endif
-                    c_port++;
-                }
+            HRESULT res = NET->EnumHosts(&dpAppDesc, net_Address_server, net_Address_device,
+                EnumData, EnumSize, 10, 1000, 1000, nullptr, nullptr, DPNENUMHOSTS_SYNC);
+            if (res != S_OK)
+            {
+                if (res == DPNERR_SESSIONFULL)
+                    OnSessionFull();
                 else
-                    Msg("- IPureClient : created on port %d!", c_port);
+                    OnInvalidHost();
+                Msg("! DirectPlay LAN host enumeration failed (0x%08x)", static_cast<u32>(res));
+                return false;
             }
 
             // ****** Connection

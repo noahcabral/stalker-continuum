@@ -16,6 +16,7 @@ public:
     void OnRender(CGameFont& owner) override;
 
 private:
+    void RenderStrings(CGameFont& owner, bool shadow);
     inline void ImprintChar(Fvector l, const CGameFont& owner, FVF::TL*& v, float& X, float Y2, u32 clr2, float Y, u32 clr, xr_wide_char* wsStr, int j);
 
 private:

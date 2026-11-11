@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 
 #include "Level.h"
+#include "Actor_Flags.h"
 #include "xrEngine/IGame_Persistent.h"
 
 #include "ai_space.h"
@@ -121,7 +122,7 @@ bool CLevel::net_start_client3()
         // Load level
         R_ASSERT2(Load(level_id), "Loading failed.");
         map_data.m_level_geom_crc32 = 0;
-        if (!IsGameTypeSingle())
+        if (!psNET_direct_connect)
             CalculateLevelCrc32();
     }
     return true;
@@ -240,6 +241,12 @@ bool CLevel::net_start_client6()
         {
             g_pGamePersistent->LoadEnd();
             return true;
+        }
+        if (IsGameTypeSingle() && !psNET_direct_connect)
+        {
+            // Co-op guests skip the solo intro that normally releases the
+            // temporary startup protection. End it when the map is ready.
+            psActorFlags.set(AF_GODMODE_RT, FALSE);
         }
         if (!GEnv.isDedicatedServer)
         {

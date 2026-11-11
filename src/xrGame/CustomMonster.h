@@ -11,6 +11,7 @@
 #include "xrEngine/Feel_Touch.h"
 #include "Include/xrRender/Kinematics.h"
 #include "xrCore/Containers/AssociativeVector.hpp"
+#include "xrCore/Animation/SkeletonMotionDefs.hpp"
 #include "trajectories.h"
 
 namespace MonsterSpace
@@ -110,6 +111,7 @@ public:
     };
     xr_deque<net_update> NET;
     net_update NET_Last;
+    u32 m_campaignStateTime{};
     BOOL NET_WasInterpolating; // previous update was by interpolation or by extrapolation
     u32 NET_Time; // server time of last update
     //------------------------------
@@ -203,6 +205,13 @@ public:
     virtual CPhysicsShellHolder* cast_physics_shell_holder() { return this; }
     virtual CParticlesPlayer* cast_particles_player() { return this; }
     virtual CCustomMonster* cast_custom_monster() { return this; }
+
+    // Fixed-width records let clients skip NPCs whose spawn event has not arrived.
+    static constexpr u32 CampaignStateSize =
+        sizeof(u32) + sizeof(Fvector) + 4 * sizeof(float) +
+        MAX_PARTS * (sizeof(u32) + 2 * sizeof(float) + sizeof(u8));
+    void ExportCampaignState(NET_Packet& packet);
+    void ImportCampaignState(NET_Packet& packet);
     virtual CScriptEntity* cast_script_entity() { return this; }
     void load_killer_clsids(LPCSTR section);
     bool is_special_killer(IGameObject* obj);

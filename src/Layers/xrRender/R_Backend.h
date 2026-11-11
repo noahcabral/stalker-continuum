@@ -293,6 +293,7 @@ public:
 
     u32 curr_rt_width{};
     u32 curr_rt_height{};
+    bool hud_projection{};
 
     IC void set_pass_targets(const ref_rt& mrt0, const ref_rt& mrt1, const ref_rt& mrt2, const ref_rt& zb);
 

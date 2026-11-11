@@ -138,7 +138,7 @@ void CActor::net_Export(NET_Packet& P) // export to server
     /////////////////////////////////////////////////
     u16 NumItems = PHGetSyncItemsNumber();
 
-    if (H_Parent() || (GameID() == eGameIDSingle) || ((NumItems > 1) && OnClient()))
+    if (H_Parent() || psNET_direct_connect || ((NumItems > 1) && OnClient()))
         NumItems = 0;
 
     if (!g_Alive())
@@ -551,10 +551,8 @@ bool CActor::net_Spawn(CSE_Abstract* DC)
     // force actor to be local on server client
     CSE_Abstract* e = (CSE_Abstract*)(DC);
     CSE_ALifeCreatureActor* E = smart_cast<CSE_ALifeCreatureActor*>(e);
-    if (OnServer())
-    {
+    if (OnServer() && (!IsGameTypeSingle() || psNET_direct_connect))
         E->s_flags.set(M_SPAWN_OBJECT_LOCAL, TRUE);
-    }
 
     if (TRUE == E->s_flags.test(M_SPAWN_OBJECT_LOCAL) && TRUE == E->s_flags.is(M_SPAWN_OBJECT_ASPLAYER))
         g_actor = this;
@@ -719,8 +717,16 @@ bool CActor::net_Spawn(CSE_Abstract* DC)
 
     if (IsGameTypeSingle())
     {
-        Level().MapManager().AddMapLocation("actor_location", ID());
-        Level().MapManager().AddMapLocation("actor_location_p", ID());
+        if (Local())
+        {
+            Level().MapManager().AddMapLocation("actor_location", ID());
+            Level().MapManager().AddMapLocation("actor_location_p", ID());
+        }
+        else if (OnClient() && E->s_flags.test(M_SPAWN_OBJECT_CAMPAIGN_PLAYER))
+        {
+            auto* spot = Level().MapManager().AddMapLocation("campaign_teammate", ID());
+            spot->SetHint(E->name_replace());
+        }
 
         m_statistic_manager = xr_new<CActorStatisticMgr>();
     }
@@ -1437,7 +1443,7 @@ void CActor::save(NET_Packet& output_packet)
     inherited::save(output_packet);
     CInventoryOwner::save(output_packet);
     output_packet.w_u8(u8(m_bOutBorder));
-    CUITaskWnd* task_wnd = HUD().GetGameUI()->GetPdaMenu().pUITaskWnd;
+    CUITaskWnd* task_wnd = GEnv.isDedicatedServer ? nullptr : HUD().GetGameUI()->GetPdaMenu().pUITaskWnd;
     output_packet.w_u8(task_wnd && task_wnd->IsTreasuresEnabled() ? 1 : 0);
     output_packet.w_u8(task_wnd && task_wnd->IsQuestNpcsEnabled() ? 1 : 0);
     output_packet.w_u8(task_wnd && task_wnd->IsSecondaryTasksEnabled() ? 1 : 0);
@@ -1460,7 +1466,7 @@ void CActor::load(IReader& input_packet)
     const bool secondaryTasks = !!input_packet.r_u8();
     const bool primaryObjects = !!input_packet.r_u8();
 
-    CUITaskWnd* task_wnd = HUD().GetGameUI()->GetPdaMenu().pUITaskWnd;
+    CUITaskWnd* task_wnd = GEnv.isDedicatedServer ? nullptr : HUD().GetGameUI()->GetPdaMenu().pUITaskWnd;
     if (task_wnd)
     {
         task_wnd->TreasuresEnabled(treasures);

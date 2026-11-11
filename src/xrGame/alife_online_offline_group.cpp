@@ -187,7 +187,7 @@ void CSE_ALifeOnlineOfflineGroup::try_switch_online()
             "personal "
             "properties",
             (*I).second->name_replace());
-        if (alife().graph().actor()->o_Position.distance_to((*I).second->o_Position) > alife().online_distance())
+        if (alife().DistanceToActivePlayers((*I).second->o_Position) > alife().online_distance())
         {
             continue;
         }
@@ -228,7 +228,7 @@ void CSE_ALifeOnlineOfflineGroup::try_switch_offline()
             "properties",
             (*I).second->name_replace());
 
-        if (alife().graph().actor()->o_Position.distance_to((*I).second->o_Position) <= alife().offline_distance())
+        if (alife().DistanceToActivePlayers((*I).second->o_Position) <= alife().offline_distance())
             return;
     }
 

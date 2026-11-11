@@ -319,20 +319,27 @@ bool CBaseMonster::net_Spawn(CSE_Abstract* DC)
         return (FALSE);
 
     CSE_Abstract* e = (CSE_Abstract*)(DC);
-    R_ASSERT2(ai().get_level_graph() && ai().get_cross_table() && ai().level_graph().level_id() != GameGraph::_LEVEL_ID(-1),
-        "There is no AI-Map, level graph, cross table, or graph is not compiled into the game graph!");
-    monster_squad().register_member((u8)g_Team(), (u8)g_Squad(), (u8)g_Group(), this);
+    const bool replicated = OnClient() && Remote() && IsGameTypeSingle();
+    if (!replicated)
+    {
+        R_ASSERT2(ai().get_level_graph() && ai().get_cross_table() && ai().level_graph().level_id() != GameGraph::_LEVEL_ID(-1),
+            "There is no AI-Map, level graph, cross table, or graph is not compiled into the game graph!");
+        monster_squad().register_member((u8)g_Team(), (u8)g_Squad(), (u8)g_Group(), this);
+    }
     settings_overrides();
 
-    if (GetScriptControl())
+    if (!replicated && GetScriptControl())
     {
         m_control_manager->animation().reset_data();
         ProcessScripts();
     }
     m_pPhysics_support->in_NetSpawn(e);
 
-    control().update_frame();
-    control().update_schedule();
+    if (!replicated)
+    {
+        control().update_frame();
+        control().update_schedule();
+    }
 
     // spawn inventory item
     //	if (ai().get_alife()) {
@@ -381,7 +388,8 @@ void CBaseMonster::net_Destroy()
 
     m_pPhysics_support->in_NetDestroy();
 
-    monster_squad().remove_member((u8)g_Team(), (u8)g_Squad(), (u8)g_Group(), this);
+    if (!(OnClient() && Remote() && IsGameTypeSingle()))
+        monster_squad().remove_member((u8)g_Team(), (u8)g_Squad(), (u8)g_Group(), this);
 
 #ifdef DEBUG
     m_show_debug_info = 0;

@@ -25,6 +25,7 @@ public:
     virtual ~CALifeSimulator();
     virtual void destroy();
     IReader const* get_config(shared_str config) const;
+    float DistanceToActivePlayers(const Fvector& position);
 
 #if 0 // def DEBUG
 			void	validate			();

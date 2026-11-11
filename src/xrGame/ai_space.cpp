@@ -42,17 +42,7 @@ void CAI_Space::init()
     R_ASSERT(!m_inited);
 
     if (!GEnv.isDedicatedServer)
-    {
-        AISpaceBase::Initialize();
-
-        m_ef_storage = xr_make_unique<CEF_Storage>();
-        m_cover_manager = xr_make_unique<CCoverManager>();
-        m_moving_objects = xr_make_unique<::moving_objects>();
-
-        VERIFY(!GEnv.ScriptEngine);
-        GEnv.ScriptEngine = xr_new<CScriptEngine>(false, true);
         RestartScriptEngine();
-    }
 
     m_inited = true;
 }
@@ -153,9 +143,17 @@ void CAI_Space::RestartScriptEngine()
 {
     ZoneScoped;
 
-    if (GEnv.ScriptEngine != nullptr)
+    if (GEnv.ScriptEngine)
     {
         m_events_notifier.FireEvent(EVENT_SCRIPT_ENGINE_RESET);
+    }
+    else
+    {
+        AISpaceBase::Initialize();
+        m_ef_storage = xr_make_unique<CEF_Storage>();
+        m_cover_manager = xr_make_unique<CCoverManager>();
+        m_moving_objects = xr_make_unique<::moving_objects>();
+        GEnv.ScriptEngine = xr_new<CScriptEngine>(false, true);
     }
 
     SetupScriptEngine();
@@ -197,7 +195,7 @@ void CAI_Space::load(LPCSTR level_name)
 
 void CAI_Space::unload(bool reload)
 {
-    if (GEnv.isDedicatedServer)
+    if (!GEnv.ScriptEngine)
         return;
 
     ZoneScoped;

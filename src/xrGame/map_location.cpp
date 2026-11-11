@@ -334,7 +334,7 @@ bool CMapLocation::Update() // returns actual
 
     if (IsUserDefined())
         m_cached.m_Actuality = m_cached.m_LevelName == Level().name();
-    else if (m_owner_se_object || (!IsGameTypeSingle() && pObject))
+    else if (m_owner_se_object || (pObject && (!IsGameTypeSingle() || OnClient())))
     {
         m_cached.m_Actuality = true;
         if (IsGameTypeSingle())

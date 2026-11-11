@@ -149,7 +149,7 @@ void CActor::PickupModeUpdate()
 BOOL g_b_COD_PickUpMode = TRUE;
 void CActor::PickupModeUpdate_COD()
 {
-    if (Level().CurrentViewEntity() != this)
+    if (GEnv.isDedicatedServer || Level().CurrentViewEntity() != this)
         return;
 
     if (!g_Alive() || eacFirstEye != cam_active || !g_b_COD_PickUpMode)

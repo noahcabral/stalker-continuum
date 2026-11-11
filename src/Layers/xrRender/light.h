@@ -26,6 +26,7 @@ public:
     Fvector position;
     Fvector direction;
     Fvector right;
+    Fvector emitter_normal{};
     float range;
     float virtual_size;
     float cone;

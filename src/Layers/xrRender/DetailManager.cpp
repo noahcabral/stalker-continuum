@@ -396,6 +396,20 @@ void CDetailManager::UpdateVisibleM()
             }
         }
     }
+#if RENDER == R_R4
+    // Write nearer grass depth first. Alpha-tested holes still leave depth
+    // untouched, so grass behind those holes can pass the depth test.
+    for (auto& variation : m_visibles)
+    {
+        for (auto& slots : variation)
+        {
+            std::sort(slots.begin(), slots.end(), [this](const VisibleItems& a, const VisibleItems& b)
+            {
+                return EYE.distance_to_sqr(a.sphere->P) < EYE.distance_to_sqr(b.sphere->P);
+            });
+        }
+    }
+#endif
     RImplementation.BasicStats.DetailVisibility.End();
 }
 

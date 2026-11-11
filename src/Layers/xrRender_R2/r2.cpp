@@ -809,18 +809,24 @@ void CRender::add_SkeletonWallmark(
 
 void CRender::rmNear(CBackend& cmd_list)
 {
+    cmd_list.hud_projection = true;
+    cmd_list.set_c("hud_gbuffer", 1.f, 0.f, 0.f, 0.f);
     const D3D_VIEWPORT viewport = { 0, 0, Target->get_width(cmd_list), Target->get_height(cmd_list), 0.f, 0.02f };
     cmd_list.SetViewport(viewport);
 }
 
 void CRender::rmFar(CBackend& cmd_list)
 {
+    cmd_list.hud_projection = false;
+    cmd_list.set_c("hud_gbuffer", 0.f, 0.f, 0.f, 0.f);
     const D3D_VIEWPORT viewport = { 0, 0, Target->get_width(cmd_list), Target->get_height(cmd_list), 0.99999f, 1.f };
     cmd_list.SetViewport(viewport);
 }
 
 void CRender::rmNormal(CBackend& cmd_list)
 {
+    cmd_list.hud_projection = false;
+    cmd_list.set_c("hud_gbuffer", 0.f, 0.f, 0.f, 0.f);
     const D3D_VIEWPORT viewport = { 0, 0, Target->get_width(cmd_list), Target->get_height(cmd_list), 0.f, 1.f };
     cmd_list.SetViewport(viewport);
 }

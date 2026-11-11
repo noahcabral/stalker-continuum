@@ -29,10 +29,9 @@ CSE_ALifeTraderAbstract* ch_info_get_from_id(u16 id)
     {
         return smart_cast<CSE_ALifeTraderAbstract*>(ai().alife().objects().object(id));
     }
-    else
-    {
+    if (Level().Server)
         return smart_cast<CSE_ALifeTraderAbstract*>(Level().Server->GetGameState()->get_entity_from_eid(id));
-    }
+    return nullptr;
 }
 
 void CUICharacterInfo::InitCharacterInfo(Fvector2 pos, Fvector2 size, CUIXml* xml_doc)
@@ -127,14 +126,23 @@ void CUICharacterInfo::InitCharacter(u16 id)
 {
     m_ownerID = id;
 
-    CSE_ALifeTraderAbstract* T = ch_info_get_from_id(m_ownerID);
+    auto* trader = ch_info_get_from_id(m_ownerID);
+    auto* owner = smart_cast<CInventoryOwner*>(Level().Objects.net_Find(m_ownerID));
+    if (!trader && !owner)
+    {
+        m_ownerID = u16(-1);
+        ClearInfo();
+        return;
+    }
 
-    CCharacterInfo chInfo;
-    chInfo.Init(T);
+    CCharacterInfo offlineInfo;
+    if (trader)
+        offlineInfo.Init(trader);
+    const auto& chInfo = trader ? offlineInfo : owner->CharacterInfo();
 
     if (m_icons[eName])
     {
-        m_icons[eName]->TextItemControl()->SetTextST(T->m_character_name.c_str());
+        m_icons[eName]->TextItemControl()->SetTextST(trader ? trader->m_character_name.c_str() : owner->Name());
     }
     if (m_icons[eRank])
     {
@@ -282,7 +290,7 @@ void CUICharacterInfo::UpdateRelation()
         return;
     }
 
-    if (Actor()->ID() == m_ownerID || !hasOwner())
+    if (!Actor() || Actor()->ID() == m_ownerID || !hasOwner() || !ai().get_alife())
     {
         m_icons[eRelationCaption]->Show(false);
         m_icons[eRelation]->Show(false);
@@ -311,6 +319,15 @@ void CUICharacterInfo::Update()
     if (hasOwner() && (m_bForceUpdate || (Device.dwFrame % 50 == 0)))
     {
         m_bForceUpdate = false;
+
+        if (OnClient() && !Level().Server)
+        {
+            auto* creature = smart_cast<CEntityAlive*>(Level().Objects.net_Find(m_ownerID));
+            if (creature && m_icons[eIcon])
+                m_icons[eIcon]->SetTextureColor(creature->g_Alive() ? m_original_color : m_deadbody_color);
+            UpdateRelation();
+            return;
+        }
 
         CSE_ALifeTraderAbstract* T =
             ::detail::object_exists_in_alife_registry(m_ownerID) ? ch_info_get_from_id(m_ownerID) : NULL;

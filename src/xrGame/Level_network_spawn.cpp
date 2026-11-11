@@ -1,6 +1,7 @@
 #include "pch_script.h"
 #include "xrServer_Objects_ALife_All.h"
 #include "Level.h"
+#include "xrServer.h"
 #include "game_cl_base.h"
 #include "NET_Queue.h"
 #include "ai_space.h"
@@ -33,11 +34,14 @@ void CLevel::cl_Process_Spawn(NET_Packet& P)
     //-------------------------------------------------
     //.	Msg ("M_SPAWN - %s[%d][%x] - %d %d", *s_name,  E->ID, E,E->ID_Parent, Device.dwFrame);
     //-------------------------------------------------
-    // force object to be local for server client
     if (OnServer())
     {
-        E->s_flags.set(M_SPAWN_OBJECT_LOCAL, TRUE);
-    };
+        const auto* serverEntity = Server->ID_to_entity(E->ID);
+        const bool guestActor = !psNET_direct_connect && IsGameTypeSingle() && serverEntity &&
+            serverEntity->s_flags.is(M_SPAWN_OBJECT_ASPLAYER) && serverEntity->owner &&
+            serverEntity->owner != Server->GetServerClient();
+        E->s_flags.set(M_SPAWN_OBJECT_LOCAL, !guestActor);
+    }
 
     /*
     game_spawn_queue.push_back(E);
@@ -95,10 +99,7 @@ void CLevel::g_sv_Spawn(CSE_Abstract* E)
 #endif
 
     // Optimization for single-player only	- minimize traffic between client and server
-    if (GameID() == eGameIDSingle)
-        psNET_Flags.set(NETFLAG_MINIMIZEUPDATES, TRUE);
-    else
-        psNET_Flags.set(NETFLAG_MINIMIZEUPDATES, FALSE);
+    psNET_Flags.set(NETFLAG_MINIMIZEUPDATES, psNET_direct_connect);
 
     // Client spawn
     //	T.Start		();

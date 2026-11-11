@@ -2165,6 +2165,9 @@ void CCC_RegisterCommands()
     CMD3(CCC_Mask, "g_backrun", &psActorFlags, AF_RUN_BACKWARD);
 
     CMD3(CCC_Mask, "g_multi_item_pickup", &psActorFlags, AF_MULTI_ITEM_PICKUP);
+    CMD3(CCC_Mask, "xrEngine_reload_dof_wpn", &psActorFlags, AF_RELOAD_DOF);
+    CMD3(CCC_Mask, "xrEngine_zoom_dof_wpn", &psActorFlags, AF_SCOPE_DOF);
+    CMD3(CCC_Mask, "xrEngine_hud_animator_dof_wpn", &psActorFlags, AF_ITEM_DOF);
 
     // alife
 #ifdef DEBUG

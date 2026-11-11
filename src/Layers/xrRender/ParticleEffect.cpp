@@ -144,16 +144,16 @@ void CParticleEffect::OnFrame(u32 frame_dt)
 
     if (m_Def && m_RT_Flags.is(flRT_Playing))
     {
+        const u32 stepMs = std::max(1, iFloor(1000.f / ((1.3f - ps_particle_update_mod) * 100.f)));
+        const float stepSeconds = float(stepMs) * 0.001f;
         m_MemDT += frame_dt;
 
         int StepCount = 0;
-        if (m_MemDT >= static_cast<s32>(uDT_STEP))
+        if (m_MemDT >= static_cast<s32>(stepMs))
         {
-            // allow maximum of three steps (99ms) to avoid slowdown after loading
-            // it will really skip updates at less than 10fps, which is unplayable
-            StepCount = m_MemDT / uDT_STEP;
-            m_MemDT = m_MemDT % uDT_STEP;
-            clamp(StepCount, 0, 3);
+            StepCount = m_MemDT / stepMs;
+            m_MemDT %= stepMs;
+            clamp(StepCount, 0, static_cast<int>(99 / stepMs));
         }
 
         for (; StepCount; StepCount--)
@@ -162,7 +162,7 @@ void CParticleEffect::OnFrame(u32 frame_dt)
             {
                 if (!m_RT_Flags.is(flRT_DefferedStop))
                 {
-                    m_fElapsedLimit -= fDT_STEP;
+                    m_fElapsedLimit -= stepSeconds;
                     if (m_fElapsedLimit < 0.f)
                     {
                         m_fElapsedLimit = m_Def->m_fTimeLimit;
@@ -171,7 +171,7 @@ void CParticleEffect::OnFrame(u32 frame_dt)
                     }
                 }
             }
-            ParticleManager()->Update(m_HandleEffect, m_HandleActionList, fDT_STEP);
+            ParticleManager()->Update(m_HandleEffect, m_HandleActionList, stepSeconds);
 
             PAPI::Particle* particles;
             u32 p_cnt;
@@ -179,9 +179,9 @@ void CParticleEffect::OnFrame(u32 frame_dt)
 
             // our actions
             if (m_Def->m_Flags.is(CPEDef::dfFramed | CPEDef::dfAnimated))
-                m_Def->ExecuteAnimate(particles, p_cnt, fDT_STEP);
+                m_Def->ExecuteAnimate(particles, p_cnt, stepSeconds);
             if (m_Def->m_Flags.is(CPEDef::dfCollision))
-                m_Def->ExecuteCollision(particles, p_cnt, fDT_STEP, this, m_CollisionCallback);
+                m_Def->ExecuteCollision(particles, p_cnt, stepSeconds, this, m_CollisionCallback);
 
             //-move action
             if (p_cnt)

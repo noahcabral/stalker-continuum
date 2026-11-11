@@ -168,7 +168,7 @@ GSUpdateStatus CGameSpy_BrowsersWrapper::RefreshList_Full(bool Local, const char
 
     for (auto& bro : browsers)
     {
-        if (!bro.active)
+        if (!bro.active || (Local && bro.browser.get() != browsers.front().browser.get()))
             continue;
 
         auto status = bro.browser->RefreshList_Full(Local, FilterStr);

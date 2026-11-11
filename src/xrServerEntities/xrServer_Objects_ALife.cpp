@@ -180,7 +180,7 @@ void SFillPropData::load()
 #endif // AI_COMPILER
 
     luabind::object table;
-    if (GEnv.ScriptEngine->function_object("smart_covers.descriptions", table, LUA_TTABLE))
+    if (GEnv.ScriptEngine && GEnv.ScriptEngine->function_object("smart_covers.descriptions", table, LUA_TTABLE))
     {
         for (luabind::iterator I(table), E; I != E; ++I)
             smart_covers.emplace_back(luabind::object_cast<pcstr>(I.key()));

@@ -161,7 +161,8 @@ void CALifeStorageManager::load(void* buffer, const u32& buffer_size, LPCSTR fil
     if (!g_pGameLevel)
         return;
 
-    Level().autosave_manager().on_game_loaded();
+    if (!GEnv.isDedicatedServer)
+        Level().autosave_manager().on_game_loaded();
 
     //Neloreck: For consistency with before/after save callbacks.
     luabind::functor<void> funct2;

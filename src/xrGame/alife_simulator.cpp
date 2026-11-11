@@ -15,6 +15,11 @@
 #include "MainMenu.h"
 #include "object_factory.h"
 #include "alife_object_registry.h"
+#include "alife_graph_registry.h"
+#include "xrServer.h"
+#include "xrServer_Objects_ALife_Monsters.h"
+#include "Actor.h"
+#include "Level.h"
 #include "xrEngine/XR_IOConsole.h"
 
 #ifdef DEBUG
@@ -22,6 +27,29 @@
 #endif // DEBUG
 
 LPCSTR alife_section = "alife";
+
+float CALifeSimulator::DistanceToActivePlayers(const Fvector& position)
+{
+    const auto* campaignActor = graph().actor();
+    if (psNET_direct_connect)
+        return campaignActor->o_Position.distance_to(position);
+
+    float nearest = flt_max;
+    auto visit = [&](IClient* connection)
+    {
+        const auto* client = static_cast<const xrClientData*>(connection);
+        if (!client->owner || !client->net_Ready ||
+            !client->owner->s_flags.test(M_SPAWN_OBJECT_CAMPAIGN_PLAYER))
+            return;
+
+        auto* object = smart_cast<CGameObject*>(Level().Objects.net_Find(client->owner->ID));
+        const auto* actor = object ? object->cast_actor() : nullptr;
+        if (actor && actor->g_Alive())
+            nearest = std::min(nearest, actor->Position().distance_to(position));
+    };
+    server().ForEachClientDo(visit);
+    return nearest != flt_max ? nearest : campaignActor->o_Position.distance_to(position);
+}
 
 
 CALifeSimulator::CALifeSimulator(IPureServer* server, shared_str* command_line)
@@ -44,13 +72,20 @@ CALifeSimulator::CALifeSimulator(IPureServer* server, shared_str* command_line)
     R_ASSERT2(xr_strlen(p.m_game_or_spawn) && !xr_strcmp(p.m_alife, "alife") && !xr_strcmp(p.m_game_type, "single"),
         "Invalid server options!");
 
-    string256 temp;
-    xr_strcpy(temp, p.m_game_or_spawn);
-    xr_strcat(temp, "/");
-    xr_strcat(temp, p.m_game_type);
-    xr_strcat(temp, "/");
-    xr_strcat(temp, p.m_alife);
-    *command_line = temp;
+    // The first four fields select the save, mode, simulator, and startup action.
+    // Preserve the trailing session settings when the simulator consumes the action.
+    const char* networkOptions = command_line->c_str();
+    for (int field = 0; field < 4 && networkOptions; ++field)
+        networkOptions = strchr(networkOptions + (field != 0), '/');
+
+    xr_string session = p.m_game_or_spawn;
+    session += "/";
+    session += p.m_game_type;
+    session += "/";
+    session += p.m_alife;
+    if (networkOptions)
+        session += networkOptions;
+    *command_line = session.c_str();
 
     const bool isNewGame = xr_strcmp(p.m_new_or_load, "new") != -1;
 

@@ -279,7 +279,7 @@ extern CActor* g_actor;
 
 bool CControlPathBuilder::can_use_distributed_computations(u32 option) const
 {
-    if (!g_actor)
+    if (!g_actor || GEnv.isDedicatedServer)
         return true;
 
     VERIFY(Actor());

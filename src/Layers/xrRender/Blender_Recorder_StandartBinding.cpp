@@ -7,6 +7,11 @@
 
 #include "xrEngine/IGame_Persistent.h"
 #include "xrEngine/Environment.h"
+#ifdef XRRENDER_R4_EXPORTS
+#include "xrEngine/CustomHUD.h"
+#include "xrEngine/IGame_Level.h"
+extern ENGINE_API float psHUD_FOV;
+#endif
 
 namespace xray::render::RENDER_NAMESPACE
 {
@@ -204,6 +209,52 @@ class cl_times : public R_constant_setup
     }
 };
 static cl_times binder_times;
+
+#ifdef XRRENDER_R4_EXPORTS
+class cl_pda_indicator : public R_constant_setup
+{
+    void setup(CBackend& cmd_list, R_constant* C) override
+    {
+        auto* hud = g_pGameLevel ? g_pGameLevel->pHUD : nullptr;
+        const bool screenOn = hud && hud->WantsPdaTexture();
+        const bool blinkOn = std::fmod(Device.fTimeGlobal, 0.8f) < 0.4f;
+        cmd_list.set_c(C, screenOn ? 1.f : 0.f, !screenOn && blinkOn ? 1.f : 0.f, 0.f, 0.f);
+    }
+};
+static cl_pda_indicator binder_pda_indicator;
+
+template <size_t Hand>
+class cl_pda_thumb_bounce : public R_constant_setup
+{
+    void setup(CBackend& cmd_list, R_constant* C) override
+    {
+        cmd_list.set_c(C, g_pGamePersistent->m_pGShaderConstants->pda_thumb_bounce[Hand]);
+    }
+};
+static cl_pda_thumb_bounce<0> binder_pda_left_thumb;
+static cl_pda_thumb_bounce<1> binder_pda_right_thumb;
+
+class cl_hud_gbuffer : public R_constant_setup
+{
+    void setup(CBackend& cmd_list, R_constant* C) override
+    {
+        cmd_list.set_c(C, cmd_list.hud_projection ? 1.f : 0.f, 0.f, 0.f, 0.f);
+    }
+};
+static cl_hud_gbuffer binder_hud_gbuffer;
+
+class cl_hud_position_decompression : public R_constant_setup
+{
+    void setup(CBackend& cmd_list, R_constant* C) override
+    {
+        const float vertical = -std::tan(deg2rad(psHUD_FOV * Device.fFOV * 0.5f));
+        const float horizontal = -vertical / Device.fASPECT;
+        cmd_list.set_c(C, horizontal, vertical, 2.f * horizontal / Device.dwWidth,
+            2.f * vertical / Device.dwHeight);
+    }
+};
+static cl_hud_position_decompression binder_hud_position_decompression;
+#endif
 
 // eye-params
 class cl_eye_P : public R_constant_setup
@@ -413,6 +464,13 @@ void CBlender_Compile::SetMapping()
 #endif
     // time
     r_Constant("timers", &binder_times);
+#ifdef XRRENDER_R4_EXPORTS
+    r_Constant("pda_indicator", &binder_pda_indicator);
+    r_Constant("pda_left_thumb", &binder_pda_left_thumb);
+    r_Constant("pda_right_thumb", &binder_pda_right_thumb);
+    r_Constant("hud_gbuffer", &binder_hud_gbuffer);
+    r_Constant("hud_position_decompression", &binder_hud_position_decompression);
+#endif
 
     // eye-params
     r_Constant("eye_position", &binder_eye_P);

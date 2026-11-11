@@ -1470,11 +1470,13 @@ void CWeapon::OnZoomIn()
     // Отключаем инерцию (Заменено GetInertionFactor())
     // EnableHudInertion(FALSE);
 
-    if (m_zoom_params.m_bZoomDofEnabled && !IsScopeAttached())
-        GamePersistent().SetEffectorDOF(m_zoom_params.m_ZoomDof);
-
-    if (GetHUDmode())
-        GamePersistent().SetPickableEffectorDOF(true);
+    if (GetHUDmode() && psActorFlags.test(AF_SCOPE_DOF))
+    {
+        if (m_zoom_params.m_bZoomDofEnabled && !IsScopeAttached())
+            GamePersistent().SetEffectorDOF(m_zoom_params.m_ZoomDof);
+        else
+            GamePersistent().SetPickableEffectorDOF(true);
+    }
 
     if (m_zoom_params.m_sUseBinocularVision.size() && IsScopeAttached() && nullptr == m_zoom_params.m_pVision)
         m_zoom_params.m_pVision = xr_new<CBinocularsVision>(m_zoom_params.m_sUseBinocularVision /*"wpn_binoc"*/);
@@ -1501,8 +1503,6 @@ void CWeapon::OnZoomOut()
 
     // Включаем инерцию (также заменено  GetInertionFactor())
     // EnableHudInertion	(TRUE);
-
-    GamePersistent().RestoreEffectorDOF();
 
     if (GetHUDmode())
         GamePersistent().SetPickableEffectorDOF(false);
@@ -1995,7 +1995,7 @@ void CWeapon::OnStateSwitch(u32 S, u32 oldState)
     inherited::OnStateSwitch(S, oldState);
     m_BriefInfo_CalcFrame = 0;
 
-    if (S == eReload)
+    if (S == eReload && psActorFlags.test(AF_RELOAD_DOF))
     {
         CActor* current_actor = smart_cast<CActor*>(H_Parent());
         if (current_actor && H_Parent() == Level().CurrentEntity())

@@ -7,6 +7,7 @@
 #include "xrMessages.h"
 #include "xrServer_Objects_ALife_All.h"
 #include "Level.h"
+#include "CustomMonster.h"
 #include "game_cl_base.h"
 #include "game_sv_mp.h"
 #include "game_cl_base_weapon_usage_statistic.h"
@@ -272,7 +273,12 @@ void xrServer::SendGameUpdateTo(IClient* client)
 void xrServer::MakeUpdatePackets()
 {
     NET_Packet tmpPacket;
+    NET_Packet npcStates;
     u32 position;
+
+    const bool campaign = IsGameTypeSingle() && !psNET_direct_connect;
+    if (campaign)
+        npcStates.w_begin(M_CAMPAIGN_NPC_STATE);
 
     m_updator.begin_updates();
 
@@ -288,6 +294,22 @@ void xrServer::MakeUpdatePackets()
             continue;
         if (Test.s_flags.is(M_SPAWN_OBJECT_PHANTOM))
             continue; // Surely: phantom
+        if (campaign)
+        {
+            auto* object = smart_cast<CGameObject*>(Level().Objects.net_Find(Test.ID));
+            if (auto* npc = object ? object->cast_custom_monster() : nullptr)
+            {
+                // Keep each transport datagram within the normal update packet budget.
+                if (npcStates.B.count + sizeof(u16) + CCustomMonster::CampaignStateSize > 1024)
+                {
+                    SendBroadcast(GetServerClient()->ID, npcStates, net_flags(FALSE, TRUE));
+                    npcStates.w_begin(M_CAMPAIGN_NPC_STATE);
+                }
+                npcStates.w_u16(Test.ID);
+                npc->ExportCampaignState(npcStates);
+                continue;
+            }
+        }
         if (!Test.Net_Relevant())
             continue;
 
@@ -309,6 +331,9 @@ void xrServer::MakeUpdatePackets()
             m_updator.write_update_for(Test.ID, tmpPacket);
         }
     } // all entities
+
+    if (campaign && npcStates.B.count > sizeof(u16))
+        SendBroadcast(GetServerClient()->ID, npcStates, net_flags(FALSE, TRUE));
 
     m_updator.end_updates(m_update_begin, m_update_end);
 }
@@ -335,7 +360,7 @@ void xrServer::SendUpdatesToAll()
 {
     ZoneScoped;
 
-    if (IsGameTypeSingle())
+    if (psNET_direct_connect || !GetServerClient())
         return;
 
     KickCheaters();
@@ -447,6 +472,25 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 
     VERIFY(verify_entities());
     xrClientData* CL = ID_to_client(sender);
+    const bool campaignGuest = IsGameTypeSingle() && !psNET_direct_connect && CL != GetServerClient();
+    if (campaignGuest)
+    {
+        switch (type)
+        {
+        case M_UPDATE:
+        case M_SAVE_PACKET:
+        case M_SWITCH_DISTANCE:
+        case M_SAVE_GAME:
+        case M_LOAD_GAME:
+        case M_RELOAD_GAME:
+        case M_CHANGE_LEVEL:
+        case M_CHANGE_LEVEL_GAME:
+        case M_CL_INPUT:
+            return 0;
+        default:
+            break;
+        }
+    }
 
     switch (type)
     {
@@ -491,6 +535,18 @@ u32 xrServer::OnMessage(NET_Packet& P, ClientID sender) // Non-Zero means broadc
 
         if (!CL->net_PassUpdates)
             break;
+
+        if (IsGameTypeSingle() && !psNET_direct_connect)
+        {
+            const auto pos = P.r_tell();
+            if (!CL->owner || P.B.count < pos + sizeof(u16) + sizeof(u32))
+                break;
+
+            const auto actorId = P.r_u16();
+            P.r_seek(pos);
+            if (actorId != CL->owner->ID)
+                break;
+        }
         //-------------------------------------------------------------------
         u32 ClientPing = CL->stats.getPing();
         P.w_seek(P.r_tell() + 2, &ClientPing, 4);

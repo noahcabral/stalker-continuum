@@ -1,4 +1,6 @@
 #include "stdafx.h"
+#include "xrEngine/CustomHUD.h"
+#include "xrEngine/IGame_Level.h"
 
 namespace xray::render::RENDER_NAMESPACE
 {
@@ -104,6 +106,13 @@ void CRender::render_lights(light_Package& LP)
                 TaskScheduler->Wait(*task);
 
             auto& dsgraph = get_context(batch_id);
+
+#ifdef XRRENDER_R4_EXPORTS
+            // A light mounted on a held item can be occluded by the hands and
+            // the item. Submit them with the light projection and regular depth.
+            if (L->get_hud_mode() && g_pGameLevel && g_pGameLevel->pHUD)
+                g_pGameLevel->pHUD->Render_Last(batch_id);
+#endif
 
             const bool bNormal = !dsgraph.mapNormalPasses[0][0].empty() || !dsgraph.mapMatrixPasses[0][0].empty();
             const bool bSpecial = !dsgraph.mapNormalPasses[1][0].empty() || !dsgraph.mapMatrixPasses[1][0].empty() ||

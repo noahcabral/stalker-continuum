@@ -110,7 +110,10 @@ bool CLevel::net_start1()
         typedef IGame_Persistent::params params;
         params& p = g_pGamePersistent->m_game_params;
         // Connect
-        if (!xr_strcmp(p.m_game_type, "single"))
+        const auto options = m_caServerOptions.c_str();
+        const auto campaignLan = strstr(options, "/campaign_lan=1");
+        const bool useCampaignLan = campaignLan && (campaignLan[15] == '/' || campaignLan[15] == '\0');
+        if (!xr_strcmp(p.m_game_type, "single") && !useCampaignLan)
         {
             Server = xr_new<xrServer>();
         }

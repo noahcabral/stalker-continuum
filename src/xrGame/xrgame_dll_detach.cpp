@@ -36,17 +36,25 @@ extern void release_smart_cast_stats();
 extern void InitHudSoundSettings();
 
 #include "xrEngine/IGame_Persistent.h"
+static bool campaign_metadata_initialized = false;
+
+void init_campaign_metadata()
+{
+    if (campaign_metadata_initialized)
+        return;
+    CInfoPortion::InitInternal(ShadowOfChernobylMode || ClearSkyMode, true);
+    CEncyclopediaArticle::InitInternal(ShadowOfChernobylMode, true);
+    CPhraseDialog::InitInternal();
+    campaign_metadata_initialized = true;
+}
+
 void init_game_globals()
 {
     ZoneScoped;
 
     InitHudSoundSettings();
     if (!GEnv.isDedicatedServer)
-    {
-        CInfoPortion::InitInternal(ShadowOfChernobylMode || ClearSkyMode, true);
-        CEncyclopediaArticle::InitInternal(ShadowOfChernobylMode, true);
-        CPhraseDialog::InitInternal();
-    };
+        init_campaign_metadata();
     CCharacterInfo::InitInternal();
     CSpecificCharacter::InitInternal();
     CHARACTER_COMMUNITY::InitInternal();
@@ -69,7 +77,7 @@ void clean_game_globals()
     story_ids.clear();
     spawn_story_ids.clear();
 
-    if (!GEnv.isDedicatedServer)
+    if (campaign_metadata_initialized)
     {
         CInfoPortion::DeleteSharedData();
         CInfoPortion::DeleteIdToIndexData();
@@ -79,6 +87,7 @@ void clean_game_globals()
 
         CPhraseDialog::DeleteSharedData();
         CPhraseDialog::DeleteIdToIndexData();
+        campaign_metadata_initialized = false;
     }
     CCharacterInfo::DeleteSharedData();
     CCharacterInfo::DeleteIdToIndexData();

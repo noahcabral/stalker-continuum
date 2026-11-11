@@ -330,21 +330,31 @@ void CBaseMonster::UpdateCL()
 
     inherited::UpdateCL();
 
+    const bool replicated = OnClient() && Remote() && IsGameTypeSingle();
     if (g_Alive())
     {
-        update_enemy_accessible_and_at_home_info();
         CStepManager::update(false);
-
-        update_pos_by_grouping_behaviour();
+        if (!replicated)
+        {
+            update_enemy_accessible_and_at_home_info();
+            update_pos_by_grouping_behaviour();
+        }
     }
 
-    control().update_frame();
+    if (!replicated)
+        control().update_frame();
 
     m_pPhysics_support->in_UpdateCL();
 }
 
 void CBaseMonster::shedule_Update(u32 dt)
 {
+    if (OnClient() && Remote() && IsGameTypeSingle())
+    {
+        CEntityAlive::shedule_Update(dt);
+        return;
+    }
+
 #ifdef DEBUG
     if (is_paused())
     {

@@ -538,16 +538,19 @@ bool CAI_Stalker::net_Spawn(CSE_Abstract* DC)
         movement().m_body.target.yaw = angle_normalize_signed(-tpHuman->o_torso.yaw);
     movement().m_body.current.pitch = movement().m_body.target.pitch = 0;
 
-    if (ai().game_graph().valid_vertex_id(tpHuman->m_tGraphID))
-        ai_location().game_vertex(tpHuman->m_tGraphID);
+    if (Local())
+    {
+        if (ai().game_graph().valid_vertex_id(tpHuman->m_tGraphID))
+            ai_location().game_vertex(tpHuman->m_tGraphID);
 
-    if (ai().game_graph().valid_vertex_id(tpHuman->m_tNextGraphID) &&
-        movement().restrictions().accessible(ai().game_graph().vertex(tpHuman->m_tNextGraphID)->level_point()))
-        movement().set_game_dest_vertex(tpHuman->m_tNextGraphID);
+        if (ai().game_graph().valid_vertex_id(tpHuman->m_tNextGraphID) &&
+            movement().restrictions().accessible(ai().game_graph().vertex(tpHuman->m_tNextGraphID)->level_point()))
+            movement().set_game_dest_vertex(tpHuman->m_tNextGraphID);
 
-    R_ASSERT2(ai().get_game_graph() && ai().get_level_graph() && ai().get_cross_table() &&
-            (ai().level_graph().level_id() != u32(-1)),
-        "There is no AI-Map, level graph, cross table, or graph is not compiled into the game graph!");
+        R_ASSERT2(ai().get_game_graph() && ai().get_level_graph() && ai().get_cross_table() &&
+                (ai().level_graph().level_id() != u32(-1)),
+            "There is no AI-Map, level graph, cross table, or graph is not compiled into the game graph!");
+    }
 
     setEnabled(TRUE);
 
@@ -820,6 +823,13 @@ void CAI_Stalker::UpdateCL()
     START_PROFILE("stalker/client_update")
     VERIFY2(PPhysicsShell() || getEnabled(), cName().c_str());
 
+    if (OnClient() && Remote() && IsGameTypeSingle())
+    {
+        inherited::UpdateCL();
+        m_pPhysics_support->in_UpdateCL();
+        return;
+    }
+
     if (g_Alive())
     {
         if (g_mt_config.test(mtObjectHandler) && CObjectHandler::planner().initialized())
@@ -905,6 +915,12 @@ CPHDestroyable* CAI_Stalker::ph_destroyable() { return smart_cast<CPHDestroyable
 
 void CAI_Stalker::shedule_Update(u32 DT)
 {
+    if (OnClient() && Remote() && IsGameTypeSingle())
+    {
+        CEntityAlive::shedule_Update(DT);
+        return;
+    }
+
     START_PROFILE("stalker")
     START_PROFILE("stalker/schedule_update")
     VERIFY2(getEnabled() || PPhysicsShell(), cName().c_str());

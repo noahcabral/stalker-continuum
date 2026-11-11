@@ -75,6 +75,7 @@ enum : u32
     M_SECURE_MESSAGE,
     M_CREATE_PLAYER_STATE,
     M_COMPRESSED_UPDATE_OBJECTS,
+    M_CAMPAIGN_NPC_STATE,
 };
 
 enum : u32
@@ -234,6 +235,7 @@ enum : u32
     M_SPAWN_UPDATE = (1 << 6), // + update packet
     M_SPAWN_TIME = (1 << 7), // + spawn time
     M_SPAWN_DENIED = (1 << 8), // don't spawn entity with this flag
+    M_SPAWN_OBJECT_CAMPAIGN_PLAYER = (1 << 9), // network player in a campaign session
 };
 
 enum enum_connection_results

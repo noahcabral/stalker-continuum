@@ -62,6 +62,16 @@ xrServer::EConnect xrServer::Connect(shared_str& session_name, GameDescriptionDa
     if (0 == game)
         return ErrConnect;
     //	game->type				= type_id;
+    const bool campaignLan = game->Type() == eGameIDSingle &&
+        game->get_option_i(session_name.c_str(), "campaign_lan", 0) == 1;
+    if (campaignLan)
+    {
+        LoadServerInfo();
+        xr_auth_strings_t ignoredPaths;
+        xr_auth_strings_t checkedPaths;
+        fill_auth_check_params(ignoredPaths, checkedPaths);
+        FS.auth_generate(ignoredPaths, checkedPaths);
+    }
     if (game->Type() != eGameIDSingle)
     {
         m_file_transfers = xr_new<file_transfer::server_site>();
@@ -76,12 +86,12 @@ xrServer::EConnect xrServer::Connect(shared_str& session_name, GameDescriptionDa
     Msg("* Created server_game %s", game->type_name());
 #endif
 
+    game->Create(session_name);
+
     ZeroMemory(&game_descr, sizeof(game_descr));
     xr_strcpy(game_descr.map_name, game->level_name(session_name.c_str()).c_str());
     xr_strcpy(game_descr.map_version, game_sv_GameState::parse_level_version(session_name.c_str()).c_str());
     xr_strcpy(game_descr.download_url, get_map_download_url(game_descr.map_name, game_descr.map_version));
-
-    game->Create(session_name);
 
     return IPureServer::Connect(session_name.c_str(), game_descr);
 }

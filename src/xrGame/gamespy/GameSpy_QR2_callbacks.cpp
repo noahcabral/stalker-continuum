@@ -389,6 +389,7 @@ int __cdecl callback_count(qr2_key_type keytype, void* userdata)
             return 0;
         switch (pServer->GetGameState()->Type())
         {
+        case eGameIDSingle: return 0;
         case eGameIDDominationZone:
         case eGameIDDeathmatch: return 1;
         case eGameIDTeamDeathmatch:

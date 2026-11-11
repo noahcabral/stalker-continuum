@@ -324,7 +324,7 @@ void CUIMainIngameWnd::Update()
     {
         lookat_player = Game().lookat_player();
     }
-    bool b_God = (GodMode() || (!lookat_player)) ? true : lookat_player->testFlag(GAME_PLAYER_FLAG_INVINCIBLE);
+    const bool b_God = GodMode() || (lookat_player && lookat_player->testFlag(GAME_PLAYER_FLAG_INVINCIBLE));
     if (b_God)
     {
         SetWarningIconColor(ewiInvincible, 0xffffffff);
@@ -378,7 +378,7 @@ void CUIMainIngameWnd::Update()
 
 void SetActorVisibility(u16 who_id, float value)
 {
-    if (!IsGameTypeSingle())
+    if (GEnv.isDedicatedServer || !IsGameTypeSingle())
         return;
 
     if (auto mainingame = CurrentGameUI()->UIMainIngameWnd)
@@ -674,7 +674,11 @@ void CUIMainIngameWnd::UpdateMotionIcon(const CActor* actor)
     }
     else
     {
-        float luminocity = smart_cast<CGameObject*>(Level().CurrentEntity())->ROS()->get_luminocity();
+        const auto entity = smart_cast<CGameObject*>(Level().CurrentEntity());
+        if (!entity || !entity->ROS())
+            return;
+
+        float luminocity = entity->ROS()->get_luminocity();
         float power = log(luminocity > .001f ? luminocity : .001f) * (1.f /*luminocity_factor*/);
         luminocity = exp(power);
 

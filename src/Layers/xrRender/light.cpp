@@ -346,6 +346,8 @@ void light::Export(light_Package& package)
                 L->set_cone(PI_DIV_2);
                 L->set_range(range);
                 L->set_virtual_size(virtual_size);
+                L->set_hud_mode(get_hud_mode());
+                L->emitter_normal = direction;
                 L->set_color(color);
                 L->spatial.sector_id = spatial.sector_id; //. dangerous?
                 L->s_spot = s_spot;

@@ -84,6 +84,8 @@ struct attachable_hud_item
     IKinematics* m_model{};
     u16 m_attach_place_idx{};
     bool m_monolithic{};
+    float m_item_scale{ 1.f };
+    Fvector m_item_scale_pivot{};
     hud_item_measures m_measures;
 
     // runtime positioning
@@ -158,6 +160,7 @@ public:
 
 private:
     IKinematicsAnimated* HandsForItem(const shared_str& section) const;
+    void MatchTemporaryHandGrips(IKinematics& hands) const;
     void load_ancors();
     void update_inertion(Fmatrix& trans) const;
     void update_additional(Fmatrix& trans) const;

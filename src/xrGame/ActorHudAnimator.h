@@ -11,6 +11,7 @@ void LowerPda(CActor* actor);
 void Stop(const CActor* actor);
 void Destroy(const CActor* actor);
 void Update(CActor* actor);
+void UpdatePdaScreenLight(const CActor* actor);
 bool Active(const CActor* actor);
 CActor* OwnerFor(const CHudItem* item);
 pcstr Section(const CActor* actor);

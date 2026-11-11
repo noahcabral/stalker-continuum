@@ -25,6 +25,14 @@ float r_ssaLOD_A, r_ssaLOD_B;
 float r_ssaGLOD_start, r_ssaGLOD_end;
 float r_ssaHZBvsTEX;
 
+static float GeometryDiscardThreshold(u32 phase, int optimization)
+{
+    if (phase == CRender::PHASE_SMAP)
+        return ps_r__common_flags.test(RFLAG_OPTIMIZE_SHADOWS) ? r_ssaDISCARD : r_ssaDISCARD * 0.25f;
+    static constexpr float thresholds[] = { 1.f, 2.f, 4.f };
+    return r_ssaDISCARD * thresholds[optimization];
+}
+
 ICF float CalcSSA(float& distSQ, Fvector& C, dxRender_Visual* V)
 {
     float R = V->vis.sphere.R + 0;
@@ -55,7 +63,7 @@ void R_dsgraph_structure::insert_dynamic(IRenderable* root, dxRender_Visual* pVi
 
     float distSQ;
     float SSA = CalcSSA(distSQ, Center, pVisual);
-    if (SSA <= r_ssaDISCARD)
+    if (SSA <= GeometryDiscardThreshold(o.phase, ps_r__optimize_dynamic_geom))
         return;
 
     // Distortive geometry should be marked and R2 special-cases it
@@ -80,7 +88,11 @@ void R_dsgraph_structure::insert_dynamic(IRenderable* root, dxRender_Visual* pVi
         return;
 
     // HUD rendering
-    if (root && root->renderable_HUD())
+    if (root && root->renderable_HUD()
+#ifdef XRRENDER_R4_EXPORTS
+        && o.phase != CRender::PHASE_SMAP
+#endif
+    )
     {
         if (sh->flags.bStrictB2F)
         {
@@ -172,7 +184,7 @@ void R_dsgraph_structure::insert_static(dxRender_Visual* pVisual)
 
     float distSQ;
     float SSA = CalcSSA(distSQ, pVisual->vis.sphere.P, pVisual);
-    if (SSA <= r_ssaDISCARD)
+    if (SSA <= GeometryDiscardThreshold(o.phase, ps_r__optimize_static_geom))
         return;
 
     // Distortive geometry should be marked and R2 special-cases it

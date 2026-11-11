@@ -1231,7 +1231,10 @@ void CActor::UpdateCL()
 
     ActorHudAnimator::Update(this);
     if (IsFocused())
+    {
         g_player_hud->update(trans);
+        ActorHudAnimator::UpdatePdaScreenLight(this);
+    }
 
     UpdateFirstPersonBody();
 
@@ -1383,7 +1386,7 @@ void CActor::shedule_Update(u32 DT)
         }
         mstate_old = mstate_real;
     }
-    if (this == Level().CurrentViewEntity())
+    if (!GEnv.isDedicatedServer && this == Level().CurrentViewEntity())
     {
         UpdateMotionIcon(mstate_real);
     };
