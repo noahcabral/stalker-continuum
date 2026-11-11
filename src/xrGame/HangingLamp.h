@@ -33,6 +33,7 @@ private:
 
     float fHealth;
     float fBrightness;
+    Fcolor m_staticLightColor;
     void CreateBody(CSE_ALifeObjectHangingLamp* lamp);
     void Init();
     void RespawnInit();

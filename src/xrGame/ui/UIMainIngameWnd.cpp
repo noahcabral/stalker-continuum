@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "../ScriptLevelEffects.h"
 
 #include "UIMainIngameWnd.h"
 
@@ -270,6 +271,7 @@ void CUIMainIngameWnd::Draw()
     if (!actor || !actor->g_Alive())
         return;
 
+    UIZoneMap->Show(!psHUD_Flags.test(ScriptLevelEffects::HideMinimap));
     CUIWindow::Draw();
 
     RenderQuickInfos(actor);
@@ -630,7 +632,8 @@ void CUIMainIngameWnd::reset_ui()
 
 void CUIMainIngameWnd::DrawZoneMap() const
 {
-    UIZoneMap->Draw();
+    if (!psHUD_Flags.test(ScriptLevelEffects::HideMinimap))
+        UIZoneMap->Draw();
 }
 
 void CUIMainIngameWnd::UpdateZoneMap(const CActor* actor)

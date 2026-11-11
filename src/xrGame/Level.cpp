@@ -1,4 +1,5 @@
 #include "pch_script.h"
+#include "ScriptLevelEffects.h"
 #include "xrEngine/FDemoRecord.h"
 #include "xrEngine/FDemoPlay.h"
 #include "xrEngine/Environment.h"
@@ -115,6 +116,7 @@ CLevel::CLevel()
 CLevel::~CLevel()
 {
     ZoneScoped;
+    ScriptLevelEffects::Reset();
 
     xr_delete(g_player_hud);
     xr_delete(pHUD);

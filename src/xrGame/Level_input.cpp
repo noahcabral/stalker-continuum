@@ -1,4 +1,7 @@
 #include "StdAfx.h"
+#include "ScriptLevelEffects.h"
+#include <bitset>
+#include <cmath>
 #include "xrEngine/XR_IOConsole.h"
 #include "entity_alive.h"
 #include "game_sv_single.h"
@@ -37,6 +40,51 @@
 extern void try_change_current_entity();
 extern void restore_actor();
 #endif
+
+namespace ScriptLevelEffects
+{
+namespace
+{
+std::bitset<kLASTACTION> blockedActions;
+float flashlightLoss = 0.f;
+float flickerStrength = 0.f;
+float lampLoss = 0.f;
+}
+
+void SetActionBlocked(EGameActions action, bool blocked)
+{
+    if (action < kLASTACTION)
+        blockedActions.set(action, blocked);
+}
+
+bool IsActionBlocked(EGameActions action)
+{
+    return action < kLASTACTION && blockedActions.test(action);
+}
+
+void SetElectronicInterference(float flashlight, float flicker, float lights)
+{
+    flashlightLoss = std::clamp(flashlight, 0.f, 1.f);
+    flickerStrength = std::clamp(flicker / 7.5f, 0.f, 1.f);
+    lampLoss = std::clamp(lights, 0.f, 1.f);
+}
+
+float LightIntensity(bool flashlight)
+{
+    if (flickerStrength == 0.f)
+        return 1.f - (flashlight ? flashlightLoss : lampLoss);
+
+    const float time = Device.fTimeGlobal;
+    const float pulse = (std::sin(time * 38.f) + std::sin(time * 53.f) + 2.f) * 0.25f;
+    return (1.f - (flashlight ? flashlightLoss : lampLoss)) * (1.f - flickerStrength * pulse);
+}
+
+void Reset()
+{
+    blockedActions.reset();
+    SetElectronicInterference(0.f, 0.f, 0.f);
+}
+}
 
 bool g_bDisableAllInput = false;
 extern float g_fTimeFactor;
@@ -127,6 +175,8 @@ void CLevel::IR_OnKeyboardPress(int key)
     bool b_ui_exist = !!CurrentGameUI();
 
     EGameActions _curr = GetBindedAction(key);
+    if (ScriptLevelEffects::IsActionBlocked(_curr))
+        return;
 
     /* avo: script callback */
     if (!g_bDisableAllInput && g_actor)
@@ -476,7 +526,7 @@ void CLevel::IR_OnKeyboardRelease(int key)
 
 void CLevel::IR_OnKeyboardHold(int key)
 {
-    if (g_bDisableAllInput)
+    if (g_bDisableAllInput || ScriptLevelEffects::IsActionBlocked(GetBindedAction(key)))
         return;
 
     /* avo: script callback */

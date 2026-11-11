@@ -7,6 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////
 
 #include "pch_script.h"
+#include "ScriptLevelEffects.h"
 #include "Level.h"
 #include "Actor.h"
 #include "script_game_object.h"
@@ -839,6 +840,8 @@ void CLevel::script_register(lua_State* luaState)
         def("remove_calls_for_object", remove_calls_for_object),
         def("present", is_level_present),
         def("disable_input", disable_input),
+        def("block_action", +[](u32 action) { ScriptLevelEffects::SetActionBlocked(EGameActions(action), true); }),
+        def("unblock_action", +[](u32 action) { ScriptLevelEffects::SetActionBlocked(EGameActions(action), false); }),
         def("enable_input", enable_input),
         def("spawn_phantom", spawn_phantom),
 
@@ -904,6 +907,7 @@ void CLevel::script_register(lua_State* luaState)
 
     module(luaState, "game")
     [
+        def("set_electronic_problems", &ScriptLevelEffects::SetElectronicInterference),
         class_<xrTime>("CTime")
             .enum_("date_format")
             [

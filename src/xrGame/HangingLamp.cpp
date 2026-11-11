@@ -1,4 +1,5 @@
 #include "pch_script.h"
+#include "ScriptLevelEffects.h"
 
 #include "HangingLamp.h"
 #include "xrEngine/LightAnimLibrary.h"
@@ -93,6 +94,7 @@ bool CHangingLamp::net_Spawn(CSE_Abstract* DC)
     Fcolor clr(lamp->color);
     clr.a = 1.f;
     clr.mul_rgb(fBrightness);
+    m_staticLightColor = clr;
 
     light_render = GEnv.Render->light_create();
     light_render->set_shadow(!!lamp->flags.is(CSE_ALifeObjectHangingLamp::flCastShadow));
@@ -252,21 +254,23 @@ void CHangingLamp::UpdateCL()
             light_ambient->set_position(xf.c);
         }
 
+        Fcolor color = m_staticLightColor;
         if (lanim)
         {
             int frame;
-            u32 clr = lanim->CalculateBGR(Device.fTimeGlobal, frame); // возвращает в формате BGR
-            Fcolor fclr;
-            fclr.set((float)color_get_B(clr), (float)color_get_G(clr), (float)color_get_R(clr), 1.f);
-            fclr.mul_rgb(fBrightness / 255.f);
-            light_render->set_color(fclr);
-            if (glow_render)
-                glow_render->set_color(fclr);
-            if (light_ambient)
-            {
-                fclr.mul_rgb(ambient_power);
-                light_ambient->set_color(fclr);
-            }
+            const u32 animated = lanim->CalculateBGR(Device.fTimeGlobal, frame);
+            color.set(float(color_get_B(animated)), float(color_get_G(animated)), float(color_get_R(animated)), 1.f);
+            color.mul_rgb(fBrightness / 255.f);
+        }
+
+        color.mul_rgb(ScriptLevelEffects::LightIntensity(false));
+        light_render->set_color(color);
+        if (glow_render)
+            glow_render->set_color(color);
+        if (light_ambient)
+        {
+            color.mul_rgb(ambient_power);
+            light_ambient->set_color(color);
         }
     }
 }

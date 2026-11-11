@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "ScriptLevelEffects.h"
 #include "MainMenu.h"
 #include "ui/UIDialogWnd.h"
 #include "ui/UIMessageBoxEx.h"
@@ -357,7 +358,7 @@ void CMainMenu::IR_OnMouseMove(int x, int y)
 bool IWantMyMouseBackScreamed = false;
 void CMainMenu::IR_OnKeyboardPress(int dik)
 {
-    if (!IsActive())
+    if (!IsActive() || ScriptLevelEffects::IsActionBlocked(GetBindedAction(dik)))
         return;
 
     if ((pInput->iGetAsyncKeyState(SDL_SCANCODE_LALT) || pInput->iGetAsyncKeyState(SDL_SCANCODE_RALT))
@@ -403,7 +404,7 @@ void CMainMenu::IR_OnKeyboardRelease(int dik)
 
 void CMainMenu::IR_OnKeyboardHold(int dik)
 {
-    if (!IsActive())
+    if (!IsActive() || ScriptLevelEffects::IsActionBlocked(GetBindedAction(dik)))
         return;
 
     CDialogHolder::IR_UIOnKeyboardHold(dik);

@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "ScriptLevelEffects.h"
 #include "Torch.h"
 #include "Entity.h"
 #include "Actor.h"
@@ -235,6 +236,7 @@ bool CTorch::net_Spawn(CSE_Abstract* DC)
 
     Fcolor clr = pUserData->r_fcolor(TORCH_DEFINITION, (b_r2) ? "color_r2" : "color");
     fBrightness = clr.intensity();
+    m_staticLightColor = clr;
     float range = pUserData->r_float(TORCH_DEFINITION, (b_r2) ? "range_r2" : "range");
     light_render->set_color(clr);
     light_render->set_range(range);
@@ -261,6 +263,7 @@ bool CTorch::net_Spawn(CSE_Abstract* DC)
 
     Fcolor clr_o = pUserData->r_fcolor(TORCH_DEFINITION, (b_r2) ? "omni_color_r2" : "omni_color");
     float range_o = pUserData->r_float(TORCH_DEFINITION, (b_r2) ? "omni_range_r2" : "omni_range");
+    m_staticOmniColor = clr_o;
     light_omni->set_color(clr_o);
     light_omni->set_range(range_o);
 
@@ -417,23 +420,26 @@ void CTorch::UpdateCL()
     if (!m_switched_on)
         return;
 
-    // calc color animator
-    if (!lanim)
-        return;
+    Fcolor spot = m_staticLightColor;
+    Fcolor omni = m_staticOmniColor;
+    if (lanim)
+    {
+        int frame;
+        const u32 color = lanim->CalculateBGR(Device.fTimeGlobal, frame);
+        spot.set(float(color_get_B(color)), float(color_get_G(color)), float(color_get_R(color)), 1.f);
+        spot.mul_rgb(fBrightness / 255.f);
+        omni = spot;
+    }
 
-    int frame;
-    // возвращает в формате BGR
-    u32 clr = lanim->CalculateBGR(Device.fTimeGlobal, frame);
-
-    Fcolor fclr;
-    fclr.set((float)color_get_B(clr), (float)color_get_G(clr), (float)color_get_R(clr), 1.f);
-    fclr.mul_rgb(fBrightness / 255.f);
+    const float intensity = ScriptLevelEffects::LightIntensity(true);
+    spot.mul_rgb(intensity);
+    omni.mul_rgb(intensity);
     if (can_use_dynamic_lights())
     {
-        light_render->set_color(fclr);
-        light_omni->set_color(fclr);
+        light_render->set_color(spot);
+        light_omni->set_color(omni);
     }
-    glow_render->set_color(fclr);
+    glow_render->set_color(spot);
 }
 
 void CTorch::create_physic_shell() { CPhysicsShellHolder::create_physic_shell(); }

@@ -1,4 +1,5 @@
 #include "pch_script.h"
+#include "ScriptLevelEffects.h"
 #include "xrEngine/XR_IOConsole.h"
 #include "xrEngine/xr_ioc_cmd.h"
 #include "xrEngine/CustomHUD.h"
@@ -2189,6 +2190,7 @@ void CCC_RegisterCommands()
     CMD3(CCC_Mask, "hud_weapon", &psHUD_Flags, HUD_WEAPON);
     CMD3(CCC_Mask, "hud_info", &psHUD_Flags, HUD_INFO);
     CMD3(CCC_Mask, "hud_draw", &psHUD_Flags, HUD_DRAW);
+    CMD3(CCC_Mask, "hud_disable_minimap", &psHUD_Flags, ScriptLevelEffects::HideMinimap);
 
     // hud
     psHUD_Flags.set(HUD_CROSSHAIR, true);

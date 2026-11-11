@@ -13,6 +13,8 @@ private:
 
 protected:
     float fBrightness;
+    Fcolor m_staticLightColor;
+    Fcolor m_staticOmniColor;
     CLAItem* lanim;
 
     u16 guid_bone;
