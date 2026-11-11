@@ -234,16 +234,16 @@ bool CTorch::net_Spawn(CSE_Abstract* DC)
     guid_bone = K->LL_BoneID(pUserData->r_string(TORCH_DEFINITION, "guide_bone"));
     VERIFY(guid_bone != BI_NONE);
 
-    Fcolor clr = pUserData->r_fcolor(TORCH_DEFINITION, (b_r2) ? "color_r2" : "color");
+    Fcolor clr = pUserData->r_fcolor(TORCH_DEFINITION, (b_r2 && pUserData->line_exist(TORCH_DEFINITION, "color_r2")) ? "color_r2" : "color");
     fBrightness = clr.intensity();
     m_staticLightColor = clr;
-    float range = pUserData->r_float(TORCH_DEFINITION, (b_r2) ? "range_r2" : "range");
+    float range = pUserData->r_float(TORCH_DEFINITION, (b_r2 && pUserData->line_exist(TORCH_DEFINITION, "range_r2")) ? "range_r2" : "range");
     light_render->set_color(clr);
     light_render->set_range(range);
 
     if (b_r2)
     {
-        bool useVolumetric = pUserData->read_if_exists<bool>(TORCH_DEFINITION, "volumetric_enabled", false);
+        bool useVolumetric = pUserData->read_if_exists<bool>(TORCH_DEFINITION, "volumetric_enabled", pUserData->read_if_exists<bool>(TORCH_DEFINITION, "volumetric", false));
         light_render->set_volumetric(useVolumetric);
         if (useVolumetric)
         {
@@ -261,8 +261,8 @@ bool CTorch::net_Spawn(CSE_Abstract* DC)
         }
     }
 
-    Fcolor clr_o = pUserData->r_fcolor(TORCH_DEFINITION, (b_r2) ? "omni_color_r2" : "omni_color");
-    float range_o = pUserData->r_float(TORCH_DEFINITION, (b_r2) ? "omni_range_r2" : "omni_range");
+    Fcolor clr_o = pUserData->r_fcolor(TORCH_DEFINITION, (b_r2 && pUserData->line_exist(TORCH_DEFINITION, "omni_color_r2")) ? "omni_color_r2" : "omni_color");
+    float range_o = pUserData->r_float(TORCH_DEFINITION, (b_r2 && pUserData->line_exist(TORCH_DEFINITION, "omni_range_r2")) ? "omni_range_r2" : "omni_range");
     m_staticOmniColor = clr_o;
     light_omni->set_color(clr_o);
     light_omni->set_range(range_o);
