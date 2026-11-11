@@ -226,12 +226,20 @@ protected:
     shared_str m_sIdleObjectParticlesBig;
     shared_str m_sBoltEntranceParticles;
 
-    ref_sound m_idle_sound;
-    ref_sound m_awaking_sound;
-    ref_sound m_accum_sound;
-    ref_sound m_blowout_sound;
-    ref_sound m_hit_sound;
-    ref_sound m_entrance_sound;
+    struct ZoneSound
+    {
+        void Load(pcstr section, pcstr key);
+        void Play(const Fvector& position, u32 flags = 0);
+        void Stop();
+        void Move(const Fvector& position);
+        xr_vector<ref_sound> variants;
+    };
+    ZoneSound m_idle_sound;
+    ZoneSound m_awaking_sound;
+    ZoneSound m_accum_sound;
+    ZoneSound m_blowout_sound;
+    ZoneSound m_hit_sound;
+    ZoneSound m_entrance_sound;
 
     //объект партиклов обычного состояния зоны
     CParticlesObject* m_pIdleParticles;

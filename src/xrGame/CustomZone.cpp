@@ -60,15 +60,46 @@ CCustomZone::CCustomZone(void)
 
 CCustomZone::~CCustomZone(void)
 {
-    m_idle_sound.destroy();
-    m_accum_sound.destroy();
-    m_awaking_sound.destroy();
-    m_blowout_sound.destroy();
-    m_hit_sound.destroy();
-    m_entrance_sound.destroy();
     m_ArtefactBornSound.destroy();
 
     xr_delete(m_actor_effector);
+}
+
+void CCustomZone::ZoneSound::Load(pcstr section, pcstr key)
+{
+    variants.clear();
+    const auto names = READ_IF_EXISTS(pSettings, r_string, section, key, nullptr);
+    if (!names)
+        return;
+
+    const u32 count = _GetItemCount(names);
+    variants.reserve(count);
+    for (u32 index = 0; index < count; ++index)
+    {
+        string_path name;
+        _GetItem(names, index, name);
+        if (*name)
+            variants.emplace_back().create(name, st_Effect, sg_SourceType);
+    }
+}
+
+void CCustomZone::ZoneSound::Play(const Fvector& position, u32 flags)
+{
+    if (!variants.empty())
+        variants[variants.size() == 1 ? 0 : Random.randI(u32(variants.size()))].play_at_pos(nullptr, position, flags);
+}
+
+void CCustomZone::ZoneSound::Stop()
+{
+    for (auto& variant : variants)
+        variant.stop();
+}
+
+void CCustomZone::ZoneSound::Move(const Fvector& position)
+{
+    for (auto& variant : variants)
+        if (variant._feedback())
+            variant.set_position(position);
 }
 
 void CCustomZone::Load(LPCSTR section)
@@ -101,40 +132,12 @@ void CCustomZone::Load(LPCSTR section)
 
     LPCSTR sound_str = NULL;
 
-    if (pSettings->line_exist(section, "idle_sound"))
-    {
-        sound_str = pSettings->r_string(section, "idle_sound");
-        m_idle_sound.create(sound_str, st_Effect, sg_SourceType);
-    }
-
-    if (pSettings->line_exist(section, "accum_sound"))
-    {
-        sound_str = pSettings->r_string(section, "accum_sound");
-        m_accum_sound.create(sound_str, st_Effect, sg_SourceType);
-    }
-    if (pSettings->line_exist(section, "awake_sound"))
-    {
-        sound_str = pSettings->r_string(section, "awake_sound");
-        m_awaking_sound.create(sound_str, st_Effect, sg_SourceType);
-    }
-
-    if (pSettings->line_exist(section, "blowout_sound"))
-    {
-        sound_str = pSettings->r_string(section, "blowout_sound");
-        m_blowout_sound.create(sound_str, st_Effect, sg_SourceType);
-    }
-
-    if (pSettings->line_exist(section, "hit_sound"))
-    {
-        sound_str = pSettings->r_string(section, "hit_sound");
-        m_hit_sound.create(sound_str, st_Effect, sg_SourceType);
-    }
-
-    if (pSettings->line_exist(section, "entrance_sound"))
-    {
-        sound_str = pSettings->r_string(section, "entrance_sound");
-        m_entrance_sound.create(sound_str, st_Effect, sg_SourceType);
-    }
+    m_idle_sound.Load(section, "idle_sound");
+    m_accum_sound.Load(section, "accum_sound");
+    m_awaking_sound.Load(section, "awake_sound");
+    m_blowout_sound.Load(section, "blowout_sound");
+    m_hit_sound.Load(section, "hit_sound");
+    m_entrance_sound.Load(section, "entrance_sound");
 
     if (pSettings->line_exist(section, "idle_particles"))
         m_sIdleParticles = pSettings->r_string(section, "idle_particles");
@@ -705,7 +708,7 @@ float CCustomZone::Power(float dist, float nearest_shape_radius)
 
 void CCustomZone::PlayIdleParticles(bool bIdleLight)
 {
-    m_idle_sound.play_at_pos(0, Position(), true);
+    m_idle_sound.Play(Position(), true);
 
     if (m_sIdleParticles.c_str())
     {
@@ -724,7 +727,7 @@ void CCustomZone::PlayIdleParticles(bool bIdleLight)
 
 void CCustomZone::StopIdleParticles(bool bIdleLight)
 {
-    m_idle_sound.stop();
+    m_idle_sound.Stop();
 
     if (m_pIdleParticles)
     {
@@ -787,7 +790,7 @@ void CCustomZone::PlayBlowoutParticles()
 
 void CCustomZone::PlayHitParticles(CGameObject* pObject)
 {
-    m_hit_sound.play_at_pos(0, pObject->Position());
+    m_hit_sound.Play(pObject->Position());
 
     shared_str particle_str = NULL;
 
@@ -818,7 +821,7 @@ void CCustomZone::PlayHitParticles(CGameObject* pObject)
 #include "Bolt.h"
 void CCustomZone::PlayEntranceParticles(CGameObject* pObject)
 {
-    m_entrance_sound.play_at_pos(0, pObject->Position());
+    m_entrance_sound.Play(pObject->Position());
 
     LPCSTR particle_str = NULL;
 
@@ -929,7 +932,7 @@ void CCustomZone::PlayBoltEntranceParticles()
 
 void CCustomZone::PlayBulletParticles(Fvector& pos)
 {
-    m_entrance_sound.play_at_pos(0, pos);
+    m_entrance_sound.Play(pos);
 
     if (!m_sEntranceParticlesSmall)
         return;
@@ -1088,7 +1091,7 @@ void CCustomZone::UpdateBlowout()
         StartBlowoutLight();
 
     if (m_dwBlowoutSoundTime >= (u32)m_iPreviousStateTime && m_dwBlowoutSoundTime < (u32)m_iStateTime)
-        m_blowout_sound.play_at_pos(0, Position());
+        m_blowout_sound.Play(Position());
 
     if (m_zone_flags.test(eBlowoutWind) && m_dwBlowoutWindTimeStart >= (u32)m_iPreviousStateTime &&
         m_dwBlowoutWindTimeStart < (u32)m_iStateTime)
@@ -1459,8 +1462,7 @@ void CCustomZone::PlayAccumParticles()
         pParticles->Play(false);
     }
 
-    if (m_accum_sound._handle())
-        m_accum_sound.play_at_pos(0, Position());
+    m_accum_sound.Play(Position());
 }
 
 void CCustomZone::PlayAwakingParticles()
@@ -1473,8 +1475,7 @@ void CCustomZone::PlayAwakingParticles()
         pParticles->Play(false);
     }
 
-    if (m_awaking_sound._handle())
-        m_awaking_sound.play_at_pos(0, Position());
+    m_awaking_sound.Play(Position());
 }
 
 void CCustomZone::UpdateOnOffState()
