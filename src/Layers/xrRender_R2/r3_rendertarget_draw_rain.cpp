@@ -234,7 +234,13 @@ void CRenderTarget::draw_rain(CBackend& cmd_list, light& RainSetup)
 
         //	Use for intermediate results
         //	Patch normal
+#ifdef XRRENDER_R4_EXPORTS
+        cmd_list.ClearRT(rt_WetNormals, {});
+        u_setrt(cmd_list, rt_WetNormals, nullptr, nullptr, rt_MSAADepth);
+        wetReflectionReady = true;
+#else
         u_setrt(cmd_list, rt_Accumulator, nullptr, nullptr, rt_MSAADepth);
+#endif
 
         // u_setrt	(rt_Normal,NULL,NULL,get_base_zb());
         cmd_list.set_Element(s_rain->E[1]);

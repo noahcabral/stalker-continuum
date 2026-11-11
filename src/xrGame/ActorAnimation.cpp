@@ -339,10 +339,17 @@ MotionID CActor::IwpDiagonalRunMotion(u32 movement)
     return skeleton ? skeleton->ID_Cycle_Safe(clip) : MotionID{};
 }
 
+void CActor::StartHealingAnimation(bool bandage)
+{
+    m_healingTorsoClip = bandage ? "norm_torso_item_bandage" : "norm_torso_item_medkit";
+    m_healingTorsoUntil = Device.dwTimeGlobal + (bandage ? 3967 : 3367);
+}
+
 void CActor::g_SetAnimation(u32 mstate_rl)
 {
     if (!g_Alive())
     {
+        m_healingTorsoClip = nullptr;
         if (m_current_legs || m_current_torso)
         {
 //            SActorState* ST = 0;
@@ -622,6 +629,20 @@ void CActor::g_SetAnimation(u32 mstate_rl)
     }
 
     // есть анимация для всего - запустим / иначе запустим анимацию по частям
+    if (m_healingTorsoClip)
+    {
+        if (s32(Device.dwTimeGlobal - m_healingTorsoUntil) >= 0 ||
+            (mstate_rl & (mcClimb | mcSprint)) || m_bAnimTorsoPlayed)
+        {
+            m_healingTorsoClip = nullptr;
+        }
+        else if (const auto healing = motionBank->ID_Cycle_Safe(m_healingTorsoClip); healing)
+        {
+            if (m_current_torso != healing && strstr(Core.Params, "-iwp_motion_trace"))
+                Msg("[IWP_HEALING] actor %s", m_healingTorsoClip);
+            M_torso = healing;
+        }
+    }
     if (m_current_torso != M_torso)
     {
         if (m_bAnimTorsoPlayed)

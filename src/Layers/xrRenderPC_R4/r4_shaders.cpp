@@ -240,6 +240,7 @@ HRESULT CRender::shader_compile(pcstr name, IReader* fs, pcstr pFunctionName,
 
     // External defines
     options.add(m_ShaderOptions);
+    appendShaderOption(1, "IWP_SCENE_REFLECTIONS", "1");
 
     // Shadow map size
     {

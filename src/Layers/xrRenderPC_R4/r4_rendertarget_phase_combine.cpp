@@ -227,6 +227,38 @@ void CRenderTarget::phase_combine()
         }
     }
 
+    // Water samples the lit opaque scene while forward geometry is rendered.
+    if (RImplementation.o.msaa)
+    {
+        rt_Generic_0_r->resolve_into(*rt_OpaqueScene);
+    }
+    else
+    {
+        auto source = rt_Generic_0->pTexture->surface_get();
+        auto destination = rt_OpaqueScene->pTexture->surface_get();
+        HW.get_context(CHW::IMM_CTX_ID)->CopyResource(destination, source);
+        _RELEASE(destination);
+        _RELEASE(source);
+    }
+
+    if (wetReflectionReady && !_menu_pp && s_WetReflection && s_WetReflection->E[0])
+    {
+        u_setrt(RCache, rt_Generic_0_r, nullptr, nullptr, rt_MSAADepth);
+        RCache.set_Element(s_WetReflection->E[0]);
+        RCache.set_Stencil(FALSE);
+        RCache.set_CullMode(CULL_NONE);
+        RCache.set_ColorWriteEnable();
+        auto* vertices = static_cast<FVF::TL*>(RImplementation.Vertex.Lock(4, g_combine->vb_stride, Offset));
+        vertices[0].set(-1,  1, 0, 1, 0, 0, 0);
+        vertices[1].set(-1, -1, 0, 0, 0, 0, 0);
+        vertices[2].set( 1,  1, 1, 1, 0, 0, 0);
+        vertices[3].set( 1, -1, 1, 0, 0, 0, 0);
+        RImplementation.Vertex.Unlock(4, g_combine->vb_stride);
+        RCache.set_Geometry(g_combine);
+        RCache.Render(D3DPT_TRIANGLELIST, Offset, 0, 4, 0, 2);
+    }
+    wetReflectionReady = false;
+
     // Forward rendering
     {
         PIX_EVENT(Forward_rendering);

@@ -740,6 +740,7 @@ void CActor::net_Destroy()
 {
     ReleaseFirstPersonBody();
     ActorHudAnimator::Destroy(this);
+    m_healingTorsoClip = nullptr;
     inherited::net_Destroy();
 
     if (m_holder_id != ALife::_OBJECT_ID(-1))

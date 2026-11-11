@@ -314,6 +314,8 @@ CRenderTarget::CRenderTarget()
         rt_Generic.create(r2_RT_generic, w, h, D3DFMT_A8R8G8B8, 1);
 #ifdef XRRENDER_R4_EXPORTS
         rt_PdaUi.create("$user$ui", w, h, D3DFMT_A8R8G8B8, 1);
+        rt_OpaqueScene.create("$user$opaque_scene", w, h, D3DFMT_A8R8G8B8, 1);
+        rt_WetNormals.create("$user$wet_normals", w, h, D3DFMT_A16B16G16R16F, SampleCount);
 #endif
 #ifdef XR_PLATFORM_WEB
         rt_Forward.create("$user$forward", w, h, D3DFMT_A8R8G8B8, 1);
@@ -659,6 +661,9 @@ CRenderTarget::CRenderTarget()
         CBlender_combine b_combine;
         s_combine.create(&b_combine, "r2" DELIMITER "combine");
         s_combine_volumetric.create("combine_volumetric");
+#ifdef XRRENDER_R4_EXPORTS
+        s_WetReflection.create("iwp_wet_reflections");
+#endif
         s_combine_dbg_0.create("effects" DELIMITER "screen_set", r2_RT_smap_surf);
         s_combine_dbg_1.create("effects" DELIMITER "screen_set", r2_RT_luminance_t8);
         s_combine_dbg_Accumulator.create("effects" DELIMITER "screen_set", r2_RT_accum);

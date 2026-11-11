@@ -63,6 +63,11 @@ private:
     CAI_Stalker* m_object;
     IRenderVisual* m_visual;
     IKinematicsAnimated* m_skeleton_animated;
+    pcstr m_healingTorsoClip = nullptr;
+    u32 m_healingTorsoUntil = 0;
+
+public:
+    void StartHealingAnimation(bool bandage);
 
 private:
     CWeapon* m_weapon;

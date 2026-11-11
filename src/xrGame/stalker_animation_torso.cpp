@@ -349,8 +349,25 @@ MotionID CStalkerAnimationManager::missile_animation(u32 slot, const EBodyState&
     }
 }
 
+void CStalkerAnimationManager::StartHealingAnimation(bool bandage)
+{
+    m_healingTorsoClip = bandage ? "norm_torso_item_bandage" : "norm_torso_item_medkit";
+    m_healingTorsoUntil = Device.dwTimeGlobal + (bandage ? 3967 : 3367);
+}
+
 MotionID CStalkerAnimationManager::assign_torso_animation()
 {
+    if (m_healingTorsoClip)
+    {
+        if (s32(Device.dwTimeGlobal - m_healingTorsoUntil) >= 0)
+            m_healingTorsoClip = nullptr;
+        else if (const auto healing = m_skeleton_animated->ID_Cycle_Safe(m_healingTorsoClip); healing)
+        {
+            if (torso().animation() != healing && strstr(Core.Params, "-iwp_motion_trace"))
+                Msg("[IWP_HEALING] npc %s %s", object().cName().c_str(), m_healingTorsoClip);
+            return healing;
+        }
+    }
     EBodyState body_state = this->body_state();
 
     if (!object().inventory().ActiveItem())

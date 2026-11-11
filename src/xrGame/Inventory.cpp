@@ -2,6 +2,8 @@
 #include "Inventory.h"
 #include "ActorHudAnimator.h"
 #include "Actor.h"
+#include "ai/stalker/ai_stalker.h"
+#include "stalker_animation_manager.h"
 #include "CustomOutfit.h"
 #include "trade.h"
 #include "Weapon.h"
@@ -1086,14 +1088,22 @@ bool CInventory::Eat(PIItem pIItem)
     if (pItemToEat->object().H_Parent()->ID() != entity_alive->ID())
         return false;
 
-    if (auto* actor = smart_cast<CActor*>(entity_alive);
-        IsGameTypeSingle() && actor && !ActorHudAnimator::CommittingItem(actor))
+    auto* actor = smart_cast<CActor*>(entity_alive);
+    const bool committing = actor && ActorHudAnimator::CommittingItem(actor);
+    const auto animation = READ_IF_EXISTS(pSettings, r_string, pItemToEat->object().cNameSect(), "animator_sect", nullptr);
+    const bool bandage = animation && !strncmp(animation, "bandage_use", 11);
+    const bool medkit = animation && !strncmp(animation, "medkit_use", 10);
+
+    if (IsGameTypeSingle() && actor && !committing)
     {
         if (ActorHudAnimator::Active(actor))
             return false;
-        const auto section = READ_IF_EXISTS(pSettings, r_string, pItemToEat->object().cNameSect(), "animator_sect", nullptr);
-        if (section && ActorHudAnimator::Start(actor, section, pItemToEat->object().ID()))
+        if (animation && ActorHudAnimator::Start(actor, animation, pItemToEat->object().ID()))
+        {
+            if (bandage || medkit)
+                actor->StartHealingAnimation(bandage);
             return true;
+        }
     }
 
     if (!pItemToEat->UseBy(entity_alive))
@@ -1109,6 +1119,14 @@ bool CInventory::Eat(PIItem pIItem)
     {
         if (!funct(smart_cast<CGameObject*>(pItemToEat->object().H_Parent())->lua_game_object(), smart_cast<CGameObject*>(pIItem)->lua_game_object()))
             return false;
+    }
+
+    if (IsGameTypeSingle() && !committing && (bandage || medkit))
+    {
+        if (actor)
+            actor->StartHealingAnimation(bandage);
+        else if (auto* stalker = smart_cast<CAI_Stalker*>(entity_alive))
+            stalker->animation().StartHealingAnimation(bandage);
     }
 
     CActor* pActor = smart_cast<CActor*>(Level().CurrentControlEntity());

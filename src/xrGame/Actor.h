@@ -316,6 +316,9 @@ public:
     MotionID m_current_legs;
     MotionID m_current_torso;
     MotionID m_current_head;
+    pcstr m_healingTorsoClip = nullptr;
+    u32 m_healingTorsoUntil = 0;
+    void StartHealingAnimation(bool bandage);
 
     // callback на анимации модели актера
     void SetCallbacks();

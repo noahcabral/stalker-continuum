@@ -99,7 +99,11 @@ void CBlender_rain::Compile(CBlender_Compile& C)
         //		C.r_dx11Texture		("s_water",	"water\\water_water");
 
         // C.r_dx11Texture		("s_water",	"water\\water_studen");
+#ifdef XRRENDER_R4_EXPORTS
+        C.r_dx11Texture("s_patched_normal", "$user$wet_normals");
+#else
         C.r_dx11Texture("s_patched_normal", r2_RT_accum);
+#endif
 
         //	Normal can be packed into R and G
         if (RImplementation.o.gbuffer_opt)
@@ -135,7 +139,11 @@ void CBlender_rain::Compile(CBlender_Compile& C)
         //		C.r_dx11Texture		("s_water",	"water\\water_water");
 
         // C.r_dx11Texture		("s_water",	"water\\water_studen");
+#ifdef XRRENDER_R4_EXPORTS
+        C.r_dx11Texture("s_patched_normal", "$user$wet_normals");
+#else
         C.r_dx11Texture("s_patched_normal", r2_RT_accum);
+#endif
 
         // C.r_ColorWriteEnable( false, false, false, true );
 
@@ -222,7 +230,11 @@ void CBlender_rain_msaa::Compile(CBlender_Compile& C)
         //		C.r_dx11Texture		("s_water",	"water\\water_water");
 
         // C.r_dx11Texture		("s_water",	"water\\water_studen");
+#ifdef XRRENDER_R4_EXPORTS
+        C.r_dx11Texture("s_patched_normal", "$user$wet_normals");
+#else
         C.r_dx11Texture("s_patched_normal", r2_RT_accum);
+#endif
 
         //	Normal can be packed into R and G
         if (RImplementation.o.gbuffer_opt)
@@ -257,7 +269,11 @@ void CBlender_rain_msaa::Compile(CBlender_Compile& C)
         //		C.r_dx11Texture		("s_water",	"water\\water_water");
 
         // C.r_dx11Texture		("s_water",	"water\\water_studen");
+#ifdef XRRENDER_R4_EXPORTS
+        C.r_dx11Texture("s_patched_normal", "$user$wet_normals");
+#else
         C.r_dx11Texture("s_patched_normal", r2_RT_accum);
+#endif
 
         // C.r_ColorWriteEnable( false, false, false, true );
 

@@ -9,6 +9,8 @@
 #include "pch_script.h"
 #include "script_game_object.h"
 #include "ActorHudAnimator.h"
+#include "ai/stalker/ai_stalker.h"
+#include "stalker_animation_manager.h"
 #include "script_game_object_impl.h"
 #include "alife_space.h"
 #include "script_entity_space.h"
@@ -520,6 +522,11 @@ luabind::class_<CScriptGameObject>& script_register_game_object2(luabind::class_
         .def("bone_visible", &CScriptGameObject::IsBoneVisible)
         .def("set_bone_visible", &CScriptGameObject::SetBoneVisible)
         .def("set_health_ex", &CScriptGameObject::SetHealthEx) // AVO
+        .def("play_healing_animation", +[](CScriptGameObject* self, bool bandage)
+        {
+            if (auto* stalker = smart_cast<CAI_Stalker*>(&self->object()))
+                stalker->animation().StartHealingAnimation(bandage);
+        })
         .def("force_set_position", &CScriptGameObject::ForceSetPosition)
         .def("set_spatial_type", &CScriptGameObject::SetSpatialType)
         .def("get_spatial_type", &CScriptGameObject::GetSpatialType)

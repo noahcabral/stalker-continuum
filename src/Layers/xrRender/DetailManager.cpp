@@ -234,6 +234,13 @@ void CDetailManager::Load()
 void CDetailManager::Unload()
 {
     ZoneScoped;
+    // A video restart can unload details before the current frame draws them.
+    // The worker must finish before we release its slots and models.
+    if (m_calc_task)
+    {
+        TaskScheduler->Wait(*m_calc_task);
+        m_calc_task = nullptr;
+    }
     if (UseVS())
         hw_Unload();
     else
@@ -408,6 +415,8 @@ void CDetailManager::Render(CBackend& cmd_list, const Fsphere* bounds)
 
     ZoneScoped;
 
+    if (!m_calc_task)
+        return;
     TaskScheduler->Wait(*m_calc_task);
 
     RImplementation.BasicStats.DetailRender.Begin();
@@ -434,6 +443,8 @@ void CDetailManager::Render(CBackend& cmd_list, const Fsphere* bounds)
 
 void CDetailManager::DispatchMTCalc()
 {
+    if (m_calc_task)
+        TaskScheduler->Wait(*m_calc_task);
     m_calc_task = &TaskScheduler->AddTask([this]
     {
 #ifndef _EDITOR
