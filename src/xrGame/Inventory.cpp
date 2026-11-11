@@ -1,5 +1,6 @@
 #include "pch_script.h"
 #include "Inventory.h"
+#include "ActorHudAnimator.h"
 #include "Actor.h"
 #include "CustomOutfit.h"
 #include "trade.h"
@@ -1082,6 +1083,16 @@ bool CInventory::Eat(PIItem pIItem)
         return false;
     if (pItemToEat->object().H_Parent()->ID() != entity_alive->ID())
         return false;
+
+    if (auto* actor = smart_cast<CActor*>(entity_alive);
+        IsGameTypeSingle() && actor && !ActorHudAnimator::CommittingItem(actor))
+    {
+        if (ActorHudAnimator::Active(actor))
+            return false;
+        const auto section = READ_IF_EXISTS(pSettings, r_string, pItemToEat->object().cNameSect(), "animator_sect", nullptr);
+        if (section && ActorHudAnimator::Start(actor, section, pItemToEat->object().ID()))
+            return true;
+    }
 
     if (!pItemToEat->UseBy(entity_alive))
         return false;

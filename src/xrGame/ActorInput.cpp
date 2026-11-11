@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "Actor.h"
+#include "ActorHudAnimator.h"
 #include "Torch.h"
 #include "trade.h"
 #include "xrEngine/CameraBase.h"
@@ -36,6 +37,8 @@ bool g_bAutoClearCrouch = true;
 
 void CActor::IR_OnKeyboardPress(int cmd)
 {
+    if (ActorHudAnimator::BlocksAction(this, cmd))
+        return;
     if (GamePersistent().GetHudTuner().is_active())
         return;
 
@@ -268,6 +271,8 @@ void CActor::IR_OnKeyboardRelease(int cmd)
 
 void CActor::IR_OnKeyboardHold(int cmd)
 {
+    if (ActorHudAnimator::BlocksAction(this, cmd))
+        return;
     if (GamePersistent().GetHudTuner().is_active())
         return;
 

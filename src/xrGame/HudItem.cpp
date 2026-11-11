@@ -1,5 +1,8 @@
 #include "StdAfx.h"
 #include "HudItem.h"
+#include "ActorHudAnimator.h"
+#include "xrEngine/xr_level_controller.h"
+#include "xrScriptEngine/script_engine.hpp"
 #include "physic_item.h"
 #include "Actor.h"
 #include "ActorEffector.h"
@@ -302,7 +305,7 @@ u32 CHudItem::PlayHUDMotion_noCB(const shared_str& motion_name, BOOL bMixIn)
 {
     m_current_motion = motion_name;
 
-    if (bDebug && item().m_pInventory)
+    if (bDebug && m_item && item().m_pInventory)
     {
         Msg("-[%s] as[%d] [%d]anim_play [%s][%d]", HudItemData() ? "HUD" : "Simulating",
             item().m_pInventory->GetActiveSlot(), item().object_id(), motion_name.c_str(), Device.dwFrame);
@@ -501,4 +504,208 @@ attachable_hud_item* CHudItem::HudItemData() const
         return hi;
 
     return NULL;
+}
+
+namespace ActorHudAnimator
+{
+namespace
+{
+class UseAnimation final : public CHudItem
+{
+public:
+    UseAnimation(CActor& actor, pcstr section, u16 itemId)
+        : actor(actor), itemId(itemId), previousSlot(actor.inventory().GetActiveSlot())
+    {
+        hud_sect = section;
+        SetState(eShowing);
+        const auto& settings = *pSettings;
+        allowSprint = settings.read_if_exists<bool>(section, "can_sprint", false);
+        disableInput = settings.read_if_exists<bool>(section, "disable_input", false) ||
+            settings.read_if_exists<bool>(section, "disable_key_input", false);
+        const auto sound = READ_IF_EXISTS(pSettings, r_string, section, "sound_1", nullptr);
+        hasSound = sound && xr_strcmp(sound, "$silent");
+        if (hasSound)
+            m_sounds.LoadSound(section, "sound_1", "animation");
+    }
+
+    bool Play()
+    {
+        g_player_hud->detach_all_items();
+        g_player_hud->attach_item(this);
+        const auto duration = PlayHUDMotion("anm_show",
+            pSettings->read_if_exists<bool>(hud_sect, "blend", false), this, eShowing);
+        if (!duration)
+            return false;
+
+        if (hasSound)
+            m_sounds.PlaySound("animation", actor.Position(), &actor, true);
+        Invoke("start_lua_callback");
+        return true;
+    }
+
+    void Invoke(pcstr key)
+    {
+        const auto callback = READ_IF_EXISTS(pSettings, r_string, hud_sect, key, nullptr);
+        if (!callback || !xr_strcmp(callback, "null"))
+            return;
+
+        luabind::functor<void> callbackFunction;
+        if (GEnv.ScriptEngine->functor(callback, callbackFunction))
+            callbackFunction();
+    }
+
+    void OnAnimationEnd(u32) override { finished = true; }
+
+    void OnMotionMark(u32, const motion_marks& mark) override
+    {
+        for (const pcstr name : { "left", "left2", "right", "right2" })
+        {
+            if (mark.name == name)
+            {
+                const auto key = make_string("%s_lua_callback", name);
+                Invoke(key.c_str());
+                break;
+            }
+        }
+    }
+
+    void UpdateXForm() override {}
+    // The attached HUD visual renders directly through player_hud.
+    void on_renderable_Render(u32, IRenderable*) override {}
+
+    CActor& actor;
+    u16 itemId;
+    u16 previousSlot;
+    bool hasSound = false;
+    bool allowSprint = false;
+    bool disableInput = false;
+    bool finished = false;
+    bool canceled = false;
+};
+
+std::unique_ptr<UseAnimation> activeAnimation;
+const CActor* committingActor = nullptr;
+
+void Detach()
+{
+    if (g_player_hud)
+        g_player_hud->detach_item(activeAnimation.get());
+    activeAnimation.reset();
+}
+}
+
+CActor* OwnerFor(const CHudItem* item)
+{
+    return activeAnimation && activeAnimation.get() == item ? &activeAnimation->actor : nullptr;
+}
+
+bool Active(const CActor* actor)
+{
+    return activeAnimation && &activeAnimation->actor == actor && !activeAnimation->canceled;
+}
+
+pcstr Section(const CActor* actor)
+{
+    return Active(actor) ? activeAnimation->HudSection().c_str() : "";
+}
+
+u16 RestoredSlot(const CActor* actor)
+{
+    return Active(actor) ? activeAnimation->previousSlot : u16(-1);
+}
+
+bool CommittingItem(const CActor* actor)
+{
+    return committingActor == actor;
+}
+
+bool Start(CActor* actor, pcstr section, u16 itemId)
+{
+    if (!actor || !actor->g_Alive() || !actor->IsFocused() || !actor->HUDview() || activeAnimation ||
+        !g_player_hud || !section || !pSettings->section_exist(section))
+        return false;
+
+    const auto modifier = READ_IF_EXISTS(pSettings, r_string, section, "modify_sect_lua_callback", nullptr);
+    luabind::functor<pcstr> selectSection;
+    if (modifier && xr_strcmp(modifier, "null") && GEnv.ScriptEngine->functor(modifier, selectSection))
+    {
+        if (const pcstr selected = selectSection(section); selected && pSettings->section_exist(selected))
+            section = selected;
+    }
+
+    activeAnimation = std::make_unique<UseAnimation>(*actor, section, itemId);
+    if (activeAnimation->Play())
+        return true;
+
+    Detach();
+    return false;
+}
+
+void Stop(const CActor* actor)
+{
+    if (activeAnimation && &activeAnimation->actor == actor)
+        activeAnimation->canceled = true;
+}
+
+void Destroy(const CActor* actor)
+{
+    if (activeAnimation && &activeAnimation->actor == actor)
+        Detach();
+}
+
+void Update(CActor* actor)
+{
+    if (!activeAnimation || &activeAnimation->actor != actor)
+        return;
+    if (activeAnimation->canceled || !actor->g_Alive() || !actor->IsFocused() || !actor->HUDview())
+    {
+        Detach();
+        return;
+    }
+
+    activeAnimation->UpdateCL();
+    if (!activeAnimation->finished || activeAnimation->canceled)
+        return;
+
+    const auto itemId = activeAnimation->itemId;
+    if (itemId != u16(-1))
+    {
+        auto& inventory = actor->inventory();
+        const auto item = std::find_if(inventory.m_all.begin(), inventory.m_all.end(),
+            [itemId](const CInventoryItem* entry) { return entry->object_id() == itemId; });
+        if (item != inventory.m_all.end())
+        {
+            committingActor = actor;
+            inventory.Eat(*item);
+            committingActor = nullptr;
+        }
+    }
+    activeAnimation->Invoke("end_lua_callback");
+    Detach();
+}
+
+bool BlocksAction(const CActor* actor, int action)
+{
+    if (!Active(actor))
+        return false;
+    if (activeAnimation->disableInput)
+        return true;
+
+    switch (action)
+    {
+    case kSPRINT_TOGGLE: return !activeAnimation->allowSprint;
+    case kWPN_FIRE:
+    case kWPN_ZOOM:
+    case kWPN_RELOAD:
+    case kWPN_1:
+    case kWPN_2:
+    case kWPN_3:
+    case kWPN_4:
+    case kWPN_5:
+    case kWPN_6:
+        return true;
+    default:
+        return false;
+    }
+}
 }

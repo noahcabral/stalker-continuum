@@ -164,8 +164,8 @@ protected:
     HUD_SOUND_COLLECTION m_sounds;
 
 private:
-    CPhysicItem* m_object;
-    CInventoryItem* m_item;
+    CPhysicItem* m_object = nullptr;
+    CInventoryItem* m_item = nullptr;
 
 public:
     const shared_str& HudSection() const { return hud_sect; }

@@ -467,10 +467,10 @@ void CWeapon::Load(LPCSTR section)
     else if (m_eScopeStatus == ALife::eAddonPermanent)
     {
         m_zoom_params.m_fScopeZoomFactor = pSettings->r_float(cNameSect(), "scope_zoom_factor");
-        if (!GEnv.isDedicatedServer)
+        const shared_str scope_tex_name = READ_IF_EXISTS(pSettings, r_string, cNameSect(), "scope_texture", nullptr);
+        if (!GEnv.isDedicatedServer && !scope_tex_name.empty())
         {
             m_UIScope = xr_new<CUIWindow>("Scope UI");
-            shared_str scope_tex_name = pSettings->r_string(cNameSect(), "scope_texture");
             LoadScope(scope_tex_name);
         }
     }

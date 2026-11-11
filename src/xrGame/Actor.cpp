@@ -32,6 +32,7 @@
 #include "xrEngine/xr_input.h"
 //
 #include "Actor.h"
+#include "ActorHudAnimator.h"
 #include "ActorAnimation.h"
 #include "actor_anim_defs.h"
 #include "HudItem.h"
@@ -1214,6 +1215,7 @@ void CActor::UpdateCL()
     else
         Cameras().camera_Matrix(trans);
 
+    ActorHudAnimator::Update(this);
     if (IsFocused())
         g_player_hud->update(trans);
 
@@ -1242,7 +1244,7 @@ void CActor::shedule_Update(u32 DT)
     if (IsFocused())
     {
         BOOL bHudView = HUDview();
-        if (bHudView)
+        if (bHudView && !ActorHudAnimator::Active(this))
         {
             CInventoryItem* pInvItem = inventory().ActiveItem();
             if (pInvItem)
@@ -1266,7 +1268,7 @@ void CActor::shedule_Update(u32 DT)
                 // Msg("---No active item in inventory(), item 0 detached.");
             }
         }
-        else
+        else if (!bHudView)
         {
             g_player_hud->detach_all_items();
             // Msg("---No hud view found, all items detached.");

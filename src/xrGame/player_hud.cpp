@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "player_hud.h"
 #include "HudItem.h"
+#include "ActorHudAnimator.h"
 #include "xrUICore/ui_base.h"
 #include "Actor.h"
 #include "physic_item.h"
@@ -88,6 +89,19 @@ void player_hud_motion_container::load(IKinematicsAnimated* model, const shared_
 #endif // #ifdef DEBUG
                 }
             }
+            // CryRay HUD assets use this authored resting pose for missing hand tracks.
+            // Keep the requested name so the item model can still play its own track.
+            if (pm.m_animations.empty() && pSettings->section_exist("iwp_hud_compat"))
+            {
+                MotionID fallback = model->ID_Cycle_Safe("hand_idle_doun");
+                if (fallback.valid())
+                {
+                    Msg("! IWP HUD [%s] %s: using resting hands for missing motion %s",
+                        sect.c_str(), name.c_str(), pm.m_base_name.c_str());
+                    pm.m_animations.emplace_back(motion_descr{std::move(fallback), pm.m_base_name.c_str()});
+                }
+            }
+
             R_ASSERT2(!pm.m_animations.empty(), make_string("motion not found [%s]", pm.m_base_name.c_str()).c_str());
 
             m_anims.emplace(name, std::move(pm));
@@ -473,14 +487,12 @@ u32 attachable_hud_item::anim_play(const shared_str& anm_name_b, BOOL bMixIn, co
     }
 
     R_ASSERT2(m_parent_hud_item, "parent hud item is NULL");
-    CPhysicItem& parent_object = m_parent_hud_item->object();
-    // R_ASSERT2		(parent_object, "object has no parent actor");
-    // IGameObject*		parent_object = static_cast_checked<IGameObject*>(&m_parent_hud_item->object());
+    auto* current_actor = ActorHudAnimator::OwnerFor(m_parent_hud_item);
+    if (!current_actor)
+        current_actor = smart_cast<CActor*>(m_parent_hud_item->object().H_Parent());
 
-    if (IsGameTypeSingle() && parent_object.H_Parent() == Level().CurrentControlEntity())
+    if (IsGameTypeSingle() && current_actor && current_actor == Level().CurrentControlEntity())
     {
-        CActor* current_actor = static_cast_checked<CActor*>(Level().CurrentControlEntity());
-        VERIFY(current_actor);
 
         string_path ce_path;
         string_path anm_name;

@@ -1,5 +1,6 @@
 #include "pch_script.h"
 #include "Actor.h"
+#include "ActorHudAnimator.h"
 #include "HUDManager.h"
 #include "Actor_Flags.h"
 #include "Inventory.h"
@@ -737,6 +738,7 @@ bool CActor::net_Spawn(CSE_Abstract* DC)
 
 void CActor::net_Destroy()
 {
+    ActorHudAnimator::Destroy(this);
     inherited::net_Destroy();
 
     if (m_holder_id != ALife::_OBJECT_ID(-1))

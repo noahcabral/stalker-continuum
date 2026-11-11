@@ -908,6 +908,25 @@ void CLevel::script_register(lua_State* luaState)
     module(luaState, "game")
     [
         def("set_electronic_problems", &ScriptLevelEffects::SetElectronicInterference),
+        def("world2ui", +[](const Fvector& position, bool clampToScreen)
+        {
+            const auto& projection = Device.mFullTransform;
+            const float depth = position.x * projection._14 + position.y * projection._24 +
+                position.z * projection._34 + projection._44;
+            const float divisor = _max(_abs(depth), EPS);
+            const float x = (position.x * projection._11 + position.y * projection._21 +
+                position.z * projection._31 + projection._41) / divisor;
+            const float y = (position.x * projection._12 + position.y * projection._22 +
+                position.z * projection._32 + projection._42) / divisor;
+            Fvector2 screen;
+            screen.set((0.5f + 0.5f * x) * 1024.f, (0.5f - 0.5f * y) * 768.f);
+            if (clampToScreen)
+            {
+                clamp(screen.x, 0.f, 1024.f);
+                clamp(screen.y, 0.f, 768.f);
+            }
+            return screen;
+        }),
         class_<xrTime>("CTime")
             .enum_("date_format")
             [

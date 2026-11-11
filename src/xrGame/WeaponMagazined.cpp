@@ -1033,7 +1033,7 @@ void CWeaponMagazined::InitAddons()
             // m_scopes[cur_scope]->m_iScopeX	 = pSettings->r_s32(cNameSect(),"scope_x");
             // m_scopes[cur_scope]->m_iScopeY	 = pSettings->r_s32(cNameSect(),"scope_y");
 
-            scope_tex_name = pSettings->r_string(GetScopeName(), "scope_texture");
+            scope_tex_name = READ_IF_EXISTS(pSettings, r_string, GetScopeName(), "scope_texture", nullptr);
             m_zoom_params.m_fScopeZoomFactor = pSettings->r_float(GetScopeName(), "scope_zoom_factor");
             m_zoom_params.m_sUseZoomPostprocess =
                 READ_IF_EXISTS(pSettings, r_string, GetScopeName(), "scope_nightvision", 0);
@@ -1047,7 +1047,7 @@ void CWeaponMagazined::InitAddons()
                 xr_delete(m_UIScope);
             }
 
-            if (!GEnv.isDedicatedServer)
+            if (!GEnv.isDedicatedServer && !scope_tex_name.empty())
             {
                 m_UIScope = xr_new<CUIWindow>("Scope UI");
                 LoadScope(scope_tex_name);

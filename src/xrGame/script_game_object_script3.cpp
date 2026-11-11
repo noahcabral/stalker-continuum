@@ -8,6 +8,7 @@
 
 #include "pch_script.h"
 #include "script_game_object.h"
+#include "ActorHudAnimator.h"
 #include "script_game_object_impl.h"
 #include "alife_space.h"
 #include "script_entity_space.h"
@@ -541,6 +542,16 @@ luabind::class_<CScriptGameObject>& script_register_game_object2(luabind::class_
 
         // Actor
         .def("set_character_icon", &CScriptGameObject::SetCharacterIcon)
+        .def("start_hud_animator", +[](CScriptGameObject* self, pcstr section)
+            { return ActorHudAnimator::Start(smart_cast<CActor*>(&self->object()), section); })
+        .def("stop_hud_animator", +[](CScriptGameObject* self)
+            { ActorHudAnimator::Stop(smart_cast<CActor*>(&self->object())); })
+        .def("is_hud_animator_active", +[](CScriptGameObject* self)
+            { return ActorHudAnimator::Active(smart_cast<CActor*>(&self->object())); })
+        .def("get_hud_animator_section", +[](CScriptGameObject* self)
+            { return ActorHudAnimator::Section(smart_cast<CActor*>(&self->object())); })
+        .def("get_hud_animator_restored_slot", +[](CScriptGameObject* self)
+            { return ActorHudAnimator::RestoredSlot(smart_cast<CActor*>(&self->object())); })
 
         // Casting
         .def("cast_GameObject", &ObjectCast<CGameObject>)

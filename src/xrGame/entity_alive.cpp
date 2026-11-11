@@ -264,6 +264,12 @@ void CEntityAlive::HitImpulse(float /**amount**/, Fvector& /**vWorldDir**/, Fvec
 void CEntityAlive::Hit(SHit* pHDS)
 {
     SHit HDS = *pHDS;
+    if (IsGameTypeSingle() && HDS.power > 0.f && HDS.hit_type == ALife::eHitTypeFireWound &&
+        HDS.who && HDS.who->cast_actor() && (cast_stalker() || cast_base_monster()))
+    {
+        const float scale = pSettings->read_if_exists<float>("iwp_balance", "player_bullet_damage", 1.f);
+        HDS.power *= std::clamp(scale, 1.f, 3.f);
+    }
     //-------------------------------------------------------------------
     if (HDS.hit_type == ALife::eHitTypeWound_2)
         HDS.hit_type = ALife::eHitTypeWound;
