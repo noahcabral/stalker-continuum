@@ -79,11 +79,12 @@ def main():
     parser = ArgumentParser(description="Build the embedded XR64 update payload from a verified local runtime.")
     parser.add_argument("runtime", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--news-base", type=Path, help="Unpatched copy of Dynamic News when the runtime already contains the fix.")
     parser.add_argument("--write-patched-news", type=Path)
     args = parser.parse_args()
 
     license_path = Path(__file__).resolve().parents[2] / "License.txt"
-    original = (args.runtime / NEWS).read_bytes()
+    original = (args.news_base or (args.runtime / NEWS)).read_bytes()
     patched, records = build_news_patch(original)
     if args.write_patched_news:
         args.write_patched_news.write_bytes(patched)

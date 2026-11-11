@@ -396,6 +396,9 @@ void CEntityAlive::BloodyWallmarks(float P, const Fvector& dir, s16 element, con
 void CEntityAlive::PlaceBloodWallmark(const Fvector& dir, const Fvector& start_pos, float trace_dist,
     float wallmark_size, IWallMarkArray* pwallmarks_vector)
 {
+    if (GEnv.isDedicatedServer)
+        return;
+
     collide::rq_result result;
     BOOL reach_wall =
         Level().ObjectSpace.RayPick(start_pos, dir, trace_dist, collide::rqtBoth, result, this) && !result.O;

@@ -10,7 +10,7 @@ To connect to a running Cordon co-op host on your local network, choose **Join L
 
 ## Building Setup
 
-Use the tested Windows x64 runtime as input. The generator selects the OpenXRay DLLs and creates a SHA-256-checked byte patch for the local Dynamic News script. Keep the local runtime outside the Git checkout.
+Use the tested Windows x64 runtime as input. The generator selects the OpenXRay DLLs and creates a SHA-256-checked byte patch for the local Dynamic News script. Keep the local runtime outside the Git checkout. If its Dynamic News script is already patched, supply the original with `--news-base`.
 
 ```powershell
 python misc/windows/build_xr64_release_payload.py "D:\XR64 runtime" runtime-update.zip

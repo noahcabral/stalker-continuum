@@ -165,6 +165,7 @@ void CBulletManager::FireShotmark(SBullet* bullet, const Fvector& vDir, const Fv
     u16 target_material, const Fvector& vNormal, bool ShowMark)
 {
     SGameMtlPair* mtl_pair = GMLib.GetMaterialPairByIndices(bullet->bullet_material_idx, target_material);
+    const bool renderImpact = !GEnv.isDedicatedServer;
     Fvector particle_dir;
 
     if (R.O)
@@ -180,29 +181,23 @@ void CBulletManager::FireShotmark(SBullet* bullet, const Fvector& vDir, const Fv
         if (R.O->renderable_HUD())
             return;
 
-        if (mtl_pair && !mtl_pair->CollideMarks->empty() && ShowMark && ps_r__WallmarksOnSkeleton)
+        if (renderImpact && mtl_pair && !mtl_pair->CollideMarks->empty() && ShowMark && ps_r__WallmarksOnSkeleton)
         {
             //добавить отметку на материале
             Fvector p;
             p.mad(bullet->bullet_pos, bullet->dir, R.range - 0.01f);
-            if (!GEnv.isDedicatedServer)
-                GEnv.Render->add_SkeletonWallmark(&R.O->XFORM(),
-                                                  PKinematics(R.O->Visual()),
-                                                  &*mtl_pair->CollideMarks,
-                                                  p,
-                                                  bullet->dir,
-                                                  bullet->wallmark_size);
+            GEnv.Render->add_SkeletonWallmark(&R.O->XFORM(), PKinematics(R.O->Visual()),
+                &*mtl_pair->CollideMarks, p, bullet->dir, bullet->wallmark_size);
         }
     }
     else
     {
         //вычислить нормаль к пораженной поверхности
         particle_dir = vNormal;
-        Fvector* pVerts = Level().ObjectSpace.GetStaticVerts();
-        CDB::TRI* pTri = Level().ObjectSpace.GetStaticTris() + R.element;
-
-        if (mtl_pair && !mtl_pair->CollideMarks->empty() && ShowMark)
+        if (renderImpact && mtl_pair && !mtl_pair->CollideMarks->empty() && ShowMark)
         {
+            Fvector* pVerts = Level().ObjectSpace.GetStaticVerts();
+            CDB::TRI* pTri = Level().ObjectSpace.GetStaticTris() + R.element;
             //добавить отметку на материале
             GEnv.Render->add_StaticWallmark(&*mtl_pair->CollideMarks, vEnd, bullet->wallmark_size, pTri, pVerts);
         }
@@ -219,6 +214,9 @@ void CBulletManager::FireShotmark(SBullet* bullet, const Fvector& vDir, const Fv
         bullet->m_mtl_snd = *pSound;
         bullet->m_mtl_snd.play_at_pos(O, vEnd, 0);
     }
+
+    if (!renderImpact)
+        return;
 
     LPCSTR ps_name = (!mtl_pair || mtl_pair->CollideParticles.empty()) ?
         NULL :

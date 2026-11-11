@@ -217,7 +217,7 @@ void TContactShotMark(CDB::TRI* T, dContactGeom* c)
         SGameMtlPair* mtl_pair = GMLib.GetMaterialPairByIndices(T->material, data->material);
         if (mtl_pair)
         {
-            if (vel_cret > Pars::vel_cret_wallmark && !mtl_pair->CollideMarks->empty())
+            if (!GEnv.isDedicatedServer && vel_cret > Pars::vel_cret_wallmark && !mtl_pair->CollideMarks->empty())
             {
                 wm_shader WallmarkShader = mtl_pair->CollideMarks->GenerateWallmark();
                 Level().ph_commander().add_call(
@@ -250,7 +250,7 @@ void TContactShotMark(CDB::TRI* T, dContactGeom* c)
                     }
                 }
             }
-            if (square_cam_dist < SQUARE_PARTICLE_EFFECT_DIST && !mtl_pair->CollideParticles.empty())
+            if (!GEnv.isDedicatedServer && square_cam_dist < SQUARE_PARTICLE_EFFECT_DIST && !mtl_pair->CollideParticles.empty())
             {
                 SGameMtl* static_mtl = GMLib.GetMaterialByIdx(T->material);
                 VERIFY(static_mtl);
