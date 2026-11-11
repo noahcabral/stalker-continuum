@@ -394,13 +394,24 @@ void CActor::g_SetAnimation(u32 mstate_rl)
     //если мы просто стоим на месте
     bool is_standing = false;
 
+    // I.W.P. selects different normal locomotion when no item is held.
+    // Crouch, ladder, directional, and airborne states keep their own tracks.
+    auto* motionBank = Visual()->dcast_PKinematicsAnimated();
+    const bool iwpActor = UsesIwpPlayerVisual();
+    const bool unarmedNormal = iwpActor && !inventory().ActiveItem() && !(mstate_rl & (mcCrouch | mcClimb));
+    const auto unarmedMotion = [&](pcstr clip, MotionID fallback)
+    {
+        const auto motion = unarmedNormal ? motionBank->ID_Cycle_Safe(clip) : MotionID{};
+        return motion ? motion : fallback;
+    };
+
     // Legs
     if (mstate_rl & mcLanding)
         M_legs = ST->landing[0];
     else if (mstate_rl & mcLanding2)
         M_legs = ST->landing[1];
     else if ((mstate_rl & mcTurn) && !(mstate_rl & mcClimb))
-        M_legs = ST->legs_turn;
+        M_legs = unarmedMotion("norm_turn_right_1", ST->legs_turn);
     else if (mstate_rl & mcFall)
         M_legs = ST->jump_idle;
     else if (mstate_rl & mcJump)
@@ -412,7 +423,7 @@ void CActor::g_SetAnimation(u32 mstate_rl)
         M_legs = diagonal;
     }
     else if (mstate_rl & mcFwd)
-        M_legs = AS->legs_fwd;
+        M_legs = unarmedMotion(bAccelerated ? "norm_run_fwd_1" : "norm_walk_fwd_1", AS->legs_fwd);
     else if (mstate_rl & mcBack)
         M_legs = AS->legs_back;
     else if (mstate_rl & mcLStrafe)
@@ -420,7 +431,7 @@ void CActor::g_SetAnimation(u32 mstate_rl)
     else if (mstate_rl & mcRStrafe)
         M_legs = AS->legs_rs;
     else
-        is_standing = true;
+        is_standing = !iwpActor || !HUDview() || !m_firstPersonBody;
 
     if (mstate_rl & mcSprint)
     {
@@ -597,7 +608,7 @@ void CActor::g_SetAnimation(u32 mstate_rl)
             M_legs = smart_cast<IKinematicsAnimated*>(Visual())->ID_Cycle("cr_idle_1");
         }
         else
-            M_legs = ST->legs_idle;
+            M_legs = unarmedMotion("norm_idle_1", ST->legs_idle);
     }
     if (!M_head)
         M_head = ST->m_head_idle;
@@ -638,8 +649,9 @@ void CActor::g_SetAnimation(u32 mstate_rl)
             pos = fmod(m_current_legs_blend->timeCurrent, m_current_legs_blend->timeTotal) /
                 m_current_legs_blend->timeTotal;
 
-        IKinematicsAnimated* ka = smart_cast<IKinematicsAnimated*>(Visual());
-        m_current_legs_blend = PlayMotionByParts(ka, M_legs, TRUE, legs_play_callback, this);
+        if (iwpActor && M_legs && strstr(Core.Params, "-iwp_motion_trace"))
+            Msg("[IWP_POSE] legs=%u movement=%u", M_legs.idx, mstate_rl);
+        m_current_legs_blend = PlayMotionByParts(motionBank, M_legs, TRUE, legs_play_callback, this);
         //		m_current_legs_blend		=
         // smart_cast<IKinematicsAnimated*>(Visual())->PlayCycle(M_legs,TRUE,legs_play_callback,this);
 

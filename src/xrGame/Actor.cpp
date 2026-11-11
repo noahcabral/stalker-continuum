@@ -1593,9 +1593,15 @@ void CActor::UpdateFirstPersonBody()
                 GEnv.Render->model_Delete(m_firstPersonBody);
             return;
         }
-        xr_vector<Fmatrix> sourceBind, bodyBind;
-        source->LL_GetBindTransform(sourceBind);
+        xr_vector<Fmatrix> bodyBind;
         body->LL_GetBindTransform(bodyBind);
+        const u16 spine = body->LL_BoneID("bip01_spine");
+        const u16 spineParent = spine != BI_NONE ? body->LL_GetData(spine).GetParentID() : BI_NONE;
+        const u16 sourceSpineParent = spineParent != BI_NONE ?
+            source->LL_BoneID(body->LL_BoneName_dbg(spineParent)) : BI_NONE;
+        Fmatrix inverseSpineParent;
+        if (sourceSpineParent != BI_NONE)
+            inverseSpineParent.invert(bodyBind[spineParent]);
         m_firstPersonBodyBones.resize(body->LL_BoneCount());
         for (u16 i = 0; i != body->LL_BoneCount(); ++i)
         {
@@ -1608,9 +1614,20 @@ void CActor::UpdateFirstPersonBody()
                 m_firstPersonBodyBones.clear();
                 return;
             }
-            Fmatrix inverseSourceBind;
-            inverseSourceBind.invert(sourceBind[bone.source]);
-            bone.bindOffset.mul_43(inverseSourceBind, bodyBind[i]);
+            // CryRay copies animated bones directly, then recalculates the
+            // rigid body's spine subtree from its own bind pose.
+            bone.bindOffset.identity();
+            if (sourceSpineParent != BI_NONE)
+            {
+                u16 parent = i;
+                while (parent != BI_NONE && parent != spine)
+                    parent = body->LL_GetData(parent).GetParentID();
+                if (parent == spine)
+                {
+                    bone.source = sourceSpineParent;
+                    bone.bindOffset.mul_43(inverseSpineParent, bodyBind[i]);
+                }
+            }
             body->LL_GetBoneInstance(i).set_callback(bctCustom, [](CBoneInstance* instance)
             {
                 instance->mTransform = static_cast<FirstPersonBodyBone*>(instance->callback_param())->pose;
@@ -1624,36 +1641,8 @@ void CActor::UpdateFirstPersonBody()
     // The first-person proxy needs this frame's actor pose even when the distant
     // skeleton cache would normally skip its update.
     source->CalculateBones(TRUE);
-    // Use the authored upper-body pose instead of turning the torso toward the
-    // external actor's look target a second time. Retain the live pelvis and foot IK.
-    const u16 pelvis = source->LL_BoneID("bip01_pelvis");
-    const u16 spine = source->LL_BoneID("bip01_spine");
-    Fmatrix pelvisCorrection;
-    if (pelvis != BI_NONE && spine != BI_NONE)
-    {
-        Fmatrix raw, inverse;
-        source->Bone_GetAnimPos(raw, pelvis, u8(-1), true);
-        inverse.invert(raw);
-        pelvisCorrection.mul_43(source->LL_GetTransform(pelvis), inverse);
-    }
     for (auto& bone : m_firstPersonBodyBones)
-    {
-        if (pelvis != BI_NONE && spine != BI_NONE)
-        {
-            u16 parent = bone.source;
-            while (parent != BI_NONE && parent != spine)
-                parent = source->LL_GetData(parent).GetParentID();
-            if (parent == spine)
-            {
-                Fmatrix raw, corrected;
-                source->Bone_GetAnimPos(raw, bone.source, u8(-1), true);
-                corrected.mul_43(pelvisCorrection, raw);
-                bone.pose.mul_43(corrected, bone.bindOffset);
-                continue;
-            }
-        }
         bone.pose.mul_43(source->LL_GetTransform(bone.source), bone.bindOffset);
-    }
 
     // Match camera yaw without tilting the body with camera pitch or roll.
     // Reading yaw directly also works when the view points straight down.
