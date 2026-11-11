@@ -517,16 +517,19 @@ void CRender::create()
 
     //	TODO: OGL: Implement FluidManager.
 #if defined(USE_DX11)
-    FluidManager.Initialize(70, 70, 70);
-    //	FluidManager.Initialize( 100, 100, 100 );
-    FluidManager.SetScreenSize(Device.dwWidth, Device.dwHeight);
+    if (!GEnv.isDedicatedServer)
+    {
+        FluidManager.Initialize(70, 70, 70);
+        FluidManager.SetScreenSize(Device.dwWidth, Device.dwHeight);
+    }
 #endif
 }
 
 void CRender::destroy()
 {
 #if defined(USE_DX11)
-    FluidManager.Destroy();
+    if (!GEnv.isDedicatedServer)
+        FluidManager.Destroy();
 #endif
     q_sync_point.Destroy();
     HWOCC.occq_destroy();
@@ -604,7 +607,8 @@ void CRender::reset_end()
     //-AVO
 
 #if defined(USE_DX11)
-    FluidManager.SetScreenSize(Device.dwWidth, Device.dwHeight);
+    if (!GEnv.isDedicatedServer)
+        FluidManager.SetScreenSize(Device.dwWidth, Device.dwHeight);
 #endif
 
     cleanup_contexts();
