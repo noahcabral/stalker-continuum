@@ -301,6 +301,27 @@ luabind::class_<CScriptGameObject>& script_register_game_object2(luabind::class_
 
         .def("weapon_is_grenadelauncher", &CScriptGameObject::Weapon_IsGrenadeLauncherAttached)
         .def("weapon_is_scope", &CScriptGameObject::Weapon_IsScopeAttached)
+        .def("weapon_set_aim", +[](CScriptGameObject* self, bool aimed)
+        {
+            auto* weapon = self->object().cast_weapon();
+            auto* owner = weapon && weapon->H_Parent() ? weapon->H_Parent()->cast_actor() : nullptr;
+            if (!IsGameTypeSingle() || !owner || !owner->g_Alive() || owner->inventory().ActiveItem() != weapon ||
+                !weapon->IsZoomEnabled())
+                return false;
+            if (weapon->IsZoomed() == aimed)
+                return true;
+            if (aimed)
+            {
+                if (weapon->IsPending())
+                    return false;
+                if (weapon->GetState() != CHudItem::eIdle)
+                    weapon->SwitchState(CHudItem::eIdle);
+                weapon->OnZoomIn();
+            }
+            else
+                weapon->OnZoomOut();
+            return true;
+        })
         .def("weapon_is_silencer", &CScriptGameObject::Weapon_IsSilencerAttached)
 
         .def("weapon_grenadelauncher_status", &CScriptGameObject::Weapon_GrenadeLauncher_Status)

@@ -446,6 +446,10 @@ void CWeapon::Load(LPCSTR section)
 
     m_zoom_params.m_bZoomEnabled = !!pSettings->r_bool(section, "zoom_enabled");
     m_zoom_params.m_fZoomRotateTime = READ_IF_EXISTS(pSettings, r_float, section, "zoom_rotate_time", ROTATION_TIME);
+    // The donor tunes weapon aim with values around 6. OpenXRay uses seconds,
+    // so using those values directly leaves the weapon out of alignment for several seconds.
+    if (pSettings->section_exist("iwp_hud_compat") && m_zoom_params.m_fZoomRotateTime >= 1.f)
+        m_zoom_params.m_fZoomRotateTime = 1.f / m_zoom_params.m_fZoomRotateTime;
 
     if (m_eScopeStatus == ALife::eAddonAttachable)
     {

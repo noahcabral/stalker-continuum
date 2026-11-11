@@ -1044,7 +1044,19 @@ float CActor::currentFOV()
     if (eacFirstEye == cam_active && pWeapon && pWeapon->IsZoomed() &&
         (!pWeapon->ZoomTexture() || (!pWeapon->IsRotatingToZoom() && pWeapon->ZoomTexture())))
     {
-        return pWeapon->GetZoomFactor() * (0.75f);
+        const float zoomFactor = pWeapon->GetZoomFactor();
+        if (pSettings->section_exist("iwp_hud_compat"))
+        {
+            // The donor uses 100 as the unscaled setting for irons and collimators.
+            // OpenXRay interprets authored magnification values as angles.
+            if (zoomFactor <= 0.f || zoomFactor >= 100.f)
+            {
+                const float ironScale = pSettings->read_if_exists<float>("iwp_hud_compat", "iron_fov_scale", 0.85f);
+                return pWeapon->IsScopeAttached() ? g_fov : g_fov * std::clamp(ironScale, 0.5f, 1.f);
+            }
+            return std::min(g_fov, zoomFactor * 0.75f);
+        }
+        return zoomFactor * 0.75f;
     }
     else
     {

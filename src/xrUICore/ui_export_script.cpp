@@ -610,6 +610,7 @@ void CUIStatic::script_register(lua_State* luaState)
             .def(constructor<pcstr>())
 
             .def("TextControl", &CUIStatic::TextItemControl)
+            .def("SetHint", +[](CUIStatic* self, pcstr text) { self->m_stat_hint_text = text; })
 
             .def("SetText",   &CUIStatic::SetText)
             .def("SetTextST", &CUIStatic::SetTextST)
