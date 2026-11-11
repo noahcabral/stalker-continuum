@@ -565,7 +565,7 @@ DeviceState CHW::GetDeviceState()
 
         case DXGI_STATUS_OCCLUDED:
             // Do not render until we become visible again
-            return DeviceState::Lost;
+            return psDeviceFlags.test(rsAlwaysActive) ? DeviceState::Normal : DeviceState::Lost;
 
         case DXGI_ERROR_DEVICE_RESET:
             return DeviceState::NeedReset;

@@ -233,6 +233,7 @@ void CRenderDevice::DoRender()
     CStatTimer renderTotalReal;
     renderTotalReal.FrameStart();
     renderTotalReal.Begin();
+    b_is_Active = b_is_InFocus || psDeviceFlags.test(rsAlwaysActive);
     if (b_is_Active && RenderBegin())
     {
         {
