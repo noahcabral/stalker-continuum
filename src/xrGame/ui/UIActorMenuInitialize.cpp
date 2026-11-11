@@ -223,6 +223,9 @@ void CUIActorMenu::InitializeUniversal(CUIXml& uiXml)
         { eTrashList,              "dragdrop_trash",           nullptr,               nullptr,                   nullptr,            false },
 
         { eInventoryBackpackList,  "dragdrop_backpack",        nullptr,               "backpack_slot_highlight", nullptr,            false },
+        { eIwpGrenadeList,          nullptr,                    nullptr,               nullptr,                   nullptr,            false },
+        { eIwpSidearmList,          nullptr,                    nullptr,               nullptr,                   nullptr,            false },
+        { eIwpBinocularList,        nullptr,                    nullptr,               nullptr,                   nullptr,            false },
     };
     static_assert(std::size(inventory_lists) == eListCount,
         "All lists should be listed in the tuple above.");
@@ -232,6 +235,9 @@ void CUIActorMenu::InitializeUniversal(CUIXml& uiXml)
         inventorySlotRoot = uiXml.NavigateToNode("inventory_slot_wnd", 0);
     const auto donorSlotIndex = [](eActorMenuListType id) -> u16
     {
+        for (auto [slot, list] : iwpEquipmentLists)
+            if (id == list)
+                return slot;
         switch (id)
         {
         case eInventoryKnifeList: return KNIFE_SLOT;
@@ -246,8 +252,6 @@ void CUIActorMenu::InitializeUniversal(CUIXml& uiXml)
     };
     for (auto [id, section, conditionIndicator, highlight, block, required] : inventory_lists)
     {
-        if (!section)
-            continue;
         CUIDragDropListEx*& list = m_pLists[id];
 
         if (const auto slot = donorSlotIndex(id); inventorySlotRoot && slot)
@@ -276,6 +280,8 @@ void CUIActorMenu::InitializeUniversal(CUIXml& uiXml)
             }
         }
 
+        if (!section)
+            continue;
         list = UIHelper::CreateDragDropListEx(uiXml, section, this, required);
         if (!list)
             continue;
@@ -581,6 +587,11 @@ void CUIActorMenu::InitCallbacks()
 
     BindDragDropListEvents(m_pLists[eInventoryBeltList]);
     BindDragDropListEvents(m_pLists[eInventoryDetectorList]);
+    for (auto [slot, id] : iwpEquipmentLists)
+    {
+        BindDragDropListEvents(m_pLists[id]);
+        ShowIfExist(m_pLists[id], false);
+    }
 
     BindDragDropListEvents(m_pLists[eInventoryBagList]);
 

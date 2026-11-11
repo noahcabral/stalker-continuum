@@ -321,6 +321,24 @@ constexpr pcstr mov_state[] = {
 };
 #endif // DEBUG
 
+MotionID CActor::IwpDiagonalRunMotion(u32 movement)
+{
+    if ((movement & (mcCrouch | mcClimb | mcSprint | mcTurn | mcJump | mcFall | mcLanding | mcLanding2)) ||
+        !isActorAccelerated(movement, IsZoomAimingMode()) || !UsesIwpPlayerVisual())
+        return {};
+
+    pcstr clip = nullptr;
+    switch (movement & mcAnyMove)
+    {
+    case mcFwd | mcLStrafe: clip = "norm_run_fwd_ls_0"; break;
+    case mcFwd | mcRStrafe: clip = "norm_run_fwd_rs_0"; break;
+    case mcBack | mcLStrafe: clip = "norm_run_back_ls_0"; break;
+    case mcBack | mcRStrafe: clip = "norm_run_back_rs_0"; break;
+    }
+    auto* skeleton = clip && Visual() ? Visual()->dcast_PKinematicsAnimated() : nullptr;
+    return skeleton ? skeleton->ID_Cycle_Safe(clip) : MotionID{};
+}
+
 void CActor::g_SetAnimation(u32 mstate_rl)
 {
     if (!g_Alive())
@@ -387,6 +405,12 @@ void CActor::g_SetAnimation(u32 mstate_rl)
         M_legs = ST->jump_idle;
     else if (mstate_rl & mcJump)
         M_legs = ST->jump_begin;
+    else if (const auto diagonal = IwpDiagonalRunMotion(mstate_rl); diagonal)
+    {
+        if (diagonal != m_current_legs && strstr(Core.Params, "-iwp_motion_trace"))
+            Msg("[IWP_MOTION] diagonal run: movement=%u animation=%u", mstate_rl & mcAnyMove, diagonal.idx);
+        M_legs = diagonal;
+    }
     else if (mstate_rl & mcFwd)
         M_legs = AS->legs_fwd;
     else if (mstate_rl & mcBack)

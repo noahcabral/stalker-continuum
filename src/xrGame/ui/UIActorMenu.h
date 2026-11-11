@@ -107,8 +107,17 @@ protected:
         eSearchLootActorBagList,
 
         eTrashList,
+        eIwpGrenadeList,
+        eIwpSidearmList,
+        eIwpBinocularList,
 
         eListCount
+    };
+
+    static constexpr std::pair<u16, eActorMenuListType> iwpEquipmentLists[]{
+        {GRENADE_SLOT, eIwpGrenadeList},
+        {BINOCULAR_SLOT, eIwpSidearmList},
+        {ARTEFACT_SLOT, eIwpBinocularList},
     };
 
     EMenuMode m_currMenuMode;

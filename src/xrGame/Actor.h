@@ -102,7 +102,8 @@ public:
 
     // Render
     void renderable_Render(u32 context_id, IRenderable* root) override;
-    void RenderFirstPersonBody(u32 context_id, IRenderable* root);
+    bool RenderFirstPersonBody(u32 context_id, IRenderable* root);
+    void cNameVisual_set(shared_str name) override;
 
 private:
     struct FirstPersonBodyBone
@@ -115,7 +116,10 @@ private:
     IRenderVisual* m_firstPersonBodySource{};
     shared_str m_firstPersonBodyName;
     float m_firstPersonBodyShift{};
+    Fmatrix m_firstPersonBodyTransform{};
     xr_vector<FirstPersonBodyBone> m_firstPersonBodyBones;
+    bool UsesIwpPlayerVisual() const;
+    MotionID IwpDiagonalRunMotion(u32 movement);
     void UpdateFirstPersonBody();
     void ReleaseFirstPersonBody();
 

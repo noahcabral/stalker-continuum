@@ -71,7 +71,10 @@ void CHUDManager::Render_First(u32 context_id)
         const auto root = O->H_Root();
         ScopeLock lock{ &render_lock };
         root->renderable_Invisible(GEnv.Render->GenerationIsR1());
-        O->renderable_Render(context_id, root);
+        // Submit the same body and pose as the first-person color pass.
+        // Retain the normal actor shadow for outfits without a body visual.
+        if (!A->RenderFirstPersonBody(context_id, root))
+            O->renderable_Render(context_id, root);
         root->renderable_Invisible(false);
     }
 }

@@ -258,7 +258,8 @@ void CUIActorMenu::OnInventoryAction(PIItem pItem, u16 action_type)
         m_pLists[eInventoryBeltList], m_pLists[eInventoryKnifeList], m_pLists[eInventoryPistolList], m_pLists[eInventoryAutomaticList],
         m_pLists[eInventoryBackpackList], m_pLists[eInventoryOutfitList], m_pLists[eInventoryHelmetList], m_pLists[eInventoryDetectorList],
         m_pLists[eInventoryBagList], m_pLists[eTradeActorBagList], m_pLists[eTradeActorList],
-        m_pLists[eSearchLootActorBagList], m_pLists[eSearchLootBagList]
+        m_pLists[eSearchLootActorBagList], m_pLists[eSearchLootBagList],
+        m_pLists[eIwpGrenadeList], m_pLists[eIwpSidearmList], m_pLists[eIwpBinocularList]
     };
 
     switch (action_type)
@@ -270,7 +271,7 @@ void CUIActorMenu::OnInventoryAction(PIItem pItem, u16 action_type)
 
         CUIDragDropListEx* lst_to_add = nullptr;
         SInvItemPlace pl = pItem->m_ItemCurrPlace;
-        if (pItem->BaseSlot() == GRENADE_SLOT)
+        if (pItem->BaseSlot() == GRENADE_SLOT && !m_pLists[eIwpGrenadeList])
         {
             pl.type = eItemPlaceRuck;
             pl.slot_id = GRENADE_SLOT;
@@ -512,7 +513,7 @@ bool CUIActorMenu::TryActiveSlot(CUICellItem* itm)
     PIItem iitem = (PIItem)itm->m_pData;
     u16 slot = iitem->BaseSlot();
 
-    if (slot == GRENADE_SLOT)
+    if (slot == GRENADE_SLOT && !m_pLists[eIwpGrenadeList])
     {
         PIItem prev_iitem = m_pActorInvOwner->inventory().ItemFromSlot(slot);
         if (prev_iitem && (prev_iitem->object().cNameSect() != iitem->object().cNameSect()))
@@ -546,8 +547,7 @@ bool CUIActorMenu::ToSlotScript(CScriptGameObject* GO, bool force_place, u16 slo
         PIItem pitm = static_cast<PIItem>(i->m_pData);
         if (pitm == iitem)
         {
-            ToSlot(i, force_place, slot_id);
-            return true;
+            return ToSlot(i, force_place, slot_id);
         }
     }
     return false;
@@ -812,6 +812,9 @@ bool CUIActorMenu::ToBelt(CUICellItem* itm, bool b_use_cursor_pos)
 }
 CUIDragDropListEx* CUIActorMenu::GetSlotList(u16 slot_idx)
 {
+    for (auto [slot, id] : iwpEquipmentLists)
+        if (slot_idx == slot && m_pLists[id])
+            return m_pLists[id];
     if (slot_idx == NO_ACTIVE_SLOT)
     {
         return NULL;

@@ -1573,7 +1573,8 @@ void CActor::UpdateFirstPersonBody()
         m_firstPersonBodyName = name;
         // I.W.P. places the headless body behind the first-person eye so the camera
         // stays clear of the torso. Keep the authored override and donor default.
-        const float defaultShift = pSettings->read_if_exists<float>("actor_hud", "legs_shift_delta", -0.55f);
+        const float firstPersonShift = pSettings->read_if_exists<float>("iwp_hud_compat", "first_person_body_shift", -0.55f);
+        const float defaultShift = pSettings->read_if_exists<float>("actor_hud", "legs_shift_delta", firstPersonShift);
         m_firstPersonBodyShift = section ?
             pSettings->read_if_exists<float>(section, "legs_shift_delta", defaultShift) : defaultShift;
         m_firstPersonBodySource = Visual();
@@ -1620,23 +1621,54 @@ void CActor::UpdateFirstPersonBody()
         return;
     auto* source = Visual()->dcast_PKinematics();
     auto* body = m_firstPersonBody->dcast_PKinematics();
-    source->CalculateBones();
-    // The donor shifts its animated root along the root's own forward axis.
-    // Apply that same offset to the copied poses and leave the shadow rig alone.
-    const auto& rootPose = source->LL_GetTransform(source->LL_GetBoneRoot());
+    // The first-person proxy needs this frame's actor pose even when the distant
+    // skeleton cache would normally skip its update.
+    source->CalculateBones(TRUE);
+    // Use the authored upper-body pose instead of turning the torso toward the
+    // external actor's look target a second time. Retain the live pelvis and foot IK.
+    const u16 pelvis = source->LL_BoneID("bip01_pelvis");
+    const u16 spine = source->LL_BoneID("bip01_spine");
+    Fmatrix pelvisCorrection;
+    if (pelvis != BI_NONE && spine != BI_NONE)
+    {
+        Fmatrix raw, inverse;
+        source->Bone_GetAnimPos(raw, pelvis, u8(-1), true);
+        inverse.invert(raw);
+        pelvisCorrection.mul_43(source->LL_GetTransform(pelvis), inverse);
+    }
     for (auto& bone : m_firstPersonBodyBones)
     {
+        if (pelvis != BI_NONE && spine != BI_NONE)
+        {
+            u16 parent = bone.source;
+            while (parent != BI_NONE && parent != spine)
+                parent = source->LL_GetData(parent).GetParentID();
+            if (parent == spine)
+            {
+                Fmatrix raw, corrected;
+                source->Bone_GetAnimPos(raw, bone.source, u8(-1), true);
+                corrected.mul_43(pelvisCorrection, raw);
+                bone.pose.mul_43(corrected, bone.bindOffset);
+                continue;
+            }
+        }
         bone.pose.mul_43(source->LL_GetTransform(bone.source), bone.bindOffset);
-        bone.pose.c.mad(rootPose.k, m_firstPersonBodyShift);
     }
+
+    // Match camera yaw without tilting the body with camera pitch or roll.
+    // Reading yaw directly also works when the view points straight down.
+    m_firstPersonBodyTransform.setHPB(cam_FirstEye()->GetWorldYaw(), 0.f, 0.f);
+    m_firstPersonBodyTransform.c.mad(XFORM().c, m_firstPersonBodyTransform.k, m_firstPersonBodyShift);
     body->CalculateBones_Invalidate();
     body->CalculateBones(TRUE);
 }
 
-void CActor::RenderFirstPersonBody(u32 context_id, IRenderable* root)
+bool CActor::RenderFirstPersonBody(u32 context_id, IRenderable* root)
 {
-    if (m_firstPersonBody && IsFocused() && HUDview() && g_Alive() && !m_holder)
-        GEnv.Render->add_Visual(context_id, root, m_firstPersonBody, XFORM());
+    if (!m_firstPersonBody || !IsFocused() || !HUDview() || !g_Alive() || m_holder)
+        return false;
+    GEnv.Render->add_Visual(context_id, root, m_firstPersonBody, m_firstPersonBodyTransform);
+    return true;
 }
 
 void CActor::renderable_Render(u32 context_id, IRenderable* root)

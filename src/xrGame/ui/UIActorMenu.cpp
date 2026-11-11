@@ -133,6 +133,9 @@ void CUIActorMenu::SetMenuMode(EMenuMode mode)
         case mmDeadBodySearch: InitDeadBodySearchMode(); break;
         default: NODEFAULT; break;
         }
+        for (auto [slot, id] : iwpEquipmentLists)
+            if (m_pLists[id])
+                m_pLists[id]->Show(m_currMenuMode != mmUndefined);
         InitActorInfo();
         if (m_currMenuMode != mmUndefined && m_currMenuMode != mmInventory)
             InitPartnerInfo();
@@ -326,6 +329,9 @@ void CUIActorMenu::CheckDistance()
 
 EDDListType CUIActorMenu::GetListType(CUIDragDropListEx* l)
 {
+    for (auto [slot, id] : iwpEquipmentLists)
+        if (l && l == m_pLists[id])
+            return iActorSlot;
     if (l == m_pLists[eInventoryBagList])
         return iActorBag;
     if (l == m_pLists[eInventoryBeltList])
@@ -609,6 +615,9 @@ void CUIActorMenu::UpdateItemsPlace()
 
 void CUIActorMenu::clear_highlight_lists()
 {
+    for (auto [slot, id] : iwpEquipmentLists)
+        if (m_pLists[id])
+            m_pLists[id]->Highlight(false);
     if (m_pLists[eInventoryKnifeList])
         m_pLists[eInventoryKnifeList]->Highlight(false);
     m_pLists[eInventoryPistolList]->Highlight(false);
@@ -661,6 +670,14 @@ void CUIActorMenu::highlight_item_slot(CUICellItem* cell_item)
     CArtefact* artefact = smart_cast<CArtefact*>(item);
 
     u16 slot_id = item->BaseSlot();
+    for (auto [slot, id] : iwpEquipmentLists)
+    {
+        if (slot_id == slot && m_pLists[id])
+        {
+            m_pLists[id]->Highlight(true);
+            return;
+        }
+    }
     if (weapon && (slot_id == INV_SLOT_2 || slot_id == INV_SLOT_3))
     {
         m_pLists[eInventoryPistolList]->Highlight(true);
@@ -985,6 +1002,9 @@ void CUIActorMenu::ClearAllLists()
         m_pLists[eInventoryKnifeList]->ClearAll(true);
     m_pLists[eInventoryPistolList]->ClearAll(true);
     m_pLists[eInventoryAutomaticList]->ClearAll(true);
+    for (auto [slot, id] : iwpEquipmentLists)
+        if (m_pLists[id])
+            m_pLists[id]->ClearAll(true);
     if (m_pQuickSlot)
         m_pQuickSlot->ClearAll(true);
 

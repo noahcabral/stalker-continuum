@@ -418,6 +418,10 @@ void CActor::g_Orientate(u32 mstate_rl, float dt)
         break;
     }
 
+    // Donor diagonal runs already animate the diagonal stride.
+    if (IwpDiagonalRunMotion(mstate_rl))
+        calc_yaw = 0.f;
+
     // lerp angle for "effect" and capture torso data from camera
     angle_lerp(r_model_yaw_delta, calc_yaw, PI_MUL_4, dt);
 

@@ -829,13 +829,20 @@ void player_hud::update_inertion(Fmatrix& trans) const
         if (pSettings->section_exist("iwp_hud_compat"))
         {
             // A stable, fast response avoids overshooting after a hitch or a quick turn.
-            const float response = std::max(55.f, _tendto_speed * 3.f);
+            const float response = std::max(40.f, _tendto_speed * 2.5f);
             const float step = 1.f - std::exp(-response * Device.fTimeDelta);
             st_last_dir.mad(diff_dir, step);
-            origin.mad(diff_dir, std::clamp(_origin_offset * 0.12f, -0.005f, 0.005f));
-            inertion_data.m_pitch_offset_r *= 0.12f;
-            inertion_data.m_pitch_offset_n *= 0.12f;
-            inertion_data.m_pitch_offset_d *= 0.12f;
+            origin.mad(diff_dir, std::clamp(_origin_offset * 0.19f, -0.009f, 0.009f));
+            const bool aimed = pMainHud && pMainHud->m_parent_hud_item->GetCurrentHudOffsetIdx() > 0;
+            const float momentum = aimed ? 0.010f : 0.030f;
+            Fmatrix sway;
+            sway.setHPB(
+                std::clamp(diff_dir.dotproduct(xform.i) * momentum, -0.015f, 0.015f),
+                std::clamp(-diff_dir.dotproduct(xform.j) * momentum, -0.015f, 0.015f), 0.f);
+            trans.mulB_43(sway);
+            inertion_data.m_pitch_offset_r *= 0.19f;
+            inertion_data.m_pitch_offset_n *= 0.19f;
+            inertion_data.m_pitch_offset_d *= 0.19f;
         }
         else
         {

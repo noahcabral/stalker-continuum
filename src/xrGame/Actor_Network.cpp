@@ -907,6 +907,39 @@ void CActor::OnChangeVisual()
     }
 };
 
+namespace
+{
+constexpr std::string_view iwpPlayerVisualPrefix = "actors\\iwp_player\\";
+}
+
+bool CActor::UsesIwpPlayerVisual() const
+{
+    const auto name = cNameVisual();
+    return name && std::string_view(name.c_str()).starts_with(iwpPlayerVisualPrefix);
+}
+
+void CActor::cNameVisual_set(shared_str name)
+{
+    if (name && IsGameTypeSingle() && pSettings && pSettings->section_exist("iwp_hud_compat"))
+    {
+        xr_string original = name.c_str();
+        std::replace(original.begin(), original.end(), '/', '\\');
+        constexpr std::string_view actorsPrefix = "actors\\";
+        const std::string_view normalized(original.c_str());
+        if (normalized.starts_with(actorsPrefix) && !normalized.starts_with(iwpPlayerVisualPrefix))
+        {
+            xr_string local(iwpPlayerVisualPrefix.data());
+            local += original.c_str() + actorsPrefix.size();
+            string_path meshPath;
+            const bool hasExtension = std::string_view(local.c_str()).ends_with(".ogf");
+            if (hasExtension ? FS.exist("$game_meshes$", local.c_str()) :
+                FS.exist(meshPath, "$game_meshes$", local.c_str(), ".ogf"))
+                name = local.c_str();
+        }
+    }
+    inherited::cNameVisual_set(name);
+}
+
 void CActor::ChangeVisual(shared_str NewVisual)
 {
     if (!NewVisual.size())

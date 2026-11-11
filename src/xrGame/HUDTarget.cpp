@@ -263,6 +263,10 @@ void CHUDTarget::Render()
     }
 
     //отрендерить кружочек или крестик
+    // HUD_CROSSHAIR is the user's switch for both the dot/ring and the weapon cross.
+    // Retain object names and other targeting information drawn above.
+    if (!psHUD_Flags.test(HUD_CROSSHAIR))
+        return;
     if (!m_bShowCrosshair)
     {
         GEnv.UIRender->StartPrimitive(6, IUIRender::ptTriList, UI().m_currentPointType);
