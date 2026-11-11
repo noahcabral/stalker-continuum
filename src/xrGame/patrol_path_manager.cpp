@@ -106,26 +106,22 @@ void CPatrolPathManager::select_point(const Fvector& position, u32& dest_vertex_
         case ePatrolStartTypeFirst:
         {
             vertex = m_path->vertex(0);
-            VERIFY3(accessible(vertex) || show_restrictions(m_object), m_path_name.c_str(), m_game_object->cName().c_str());
             break;
         }
         case ePatrolStartTypeLast:
         {
             vertex = m_path->vertex(m_path->vertices().size() - 1);
-            VERIFY3(accessible(vertex) || show_restrictions(m_object), m_path_name.c_str(), m_game_object->cName().c_str());
             break;
         }
         case ePatrolStartTypeNearest:
         {
             vertex = m_path->point(position, CAccessabilityEvaluator(this));
-            VERIFY3(accessible(vertex) || show_restrictions(m_object), m_path_name.c_str(), m_game_object->cName().c_str());
             break;
         }
         case ePatrolStartTypePoint:
         {
             VERIFY3(m_path->vertex(m_start_point_index), m_path_name.c_str(), m_game_object->cName().c_str());
             vertex = m_path->vertex(m_start_point_index);
-            VERIFY3(accessible(vertex) || show_restrictions(m_object), m_path_name.c_str(), m_game_object->cName().c_str());
             break;
         }
         case ePatrolStartTypeNext:
@@ -149,21 +145,23 @@ void CPatrolPathManager::select_point(const Fvector& position, u32& dest_vertex_
             if (!vertex)
                 vertex = m_path->point(position, CAccessabilityEvaluator(this));
 
-            VERIFY3(accessible(vertex) || show_restrictions(m_object), m_path_name.c_str(), m_game_object->cName().c_str());
             break;
         }
         default: NODEFAULT;
         }
-        if (!(vertex || show_restrictions(m_object)))
+        if (!vertex || !accessible(vertex))
         {
-            // ugly HACK, just because Plecha asked...
-            VERIFY2(vertex || show_restrictions(m_object),
-                make_string("any vertex in patrol path [%s] is inaccessible for object [%s]", m_path_name.c_str(),
-                    m_game_object->cName().c_str()));
-            dest_vertex_id = m_game_object->ai_location().level_vertex_id();
+            // No point can be selected under the current restrictions. Keep
+            // the movement manager in point selection so it can retry later.
+            if (!m_failed)
+                Msg("! No accessible point on patrol [%s] for [%s]", m_path_name.c_str(),
+                    m_game_object->cName().c_str());
+            m_failed = true;
+            m_actuality = false;
             return;
         }
 
+        m_failed = false;
         R_ASSERT2(ai().level_graph().valid_vertex_id(vertex->data().level_vertex_id()),
             make_string("patrol path[%s], point on path [%s],object [%s]", m_path_name.c_str(), vertex->data().name().c_str(),
                 m_game_object->cName().c_str()));
