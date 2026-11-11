@@ -872,19 +872,9 @@ bool CWeaponMagazined::CanAttach(PIItem pIItem)
 
 bool CWeaponMagazined::CanDetach(const char* item_section_name)
 {
-    if (m_eScopeStatus == ALife::eAddonAttachable &&
-        0 != (m_flagsAddOnState & CSE_ALifeItemWeapon::eWeaponAddonScope)) /* &&
-           (m_scopes[cur_scope]->m_sScopeName	== item_section_name))*/
-    {
-        auto it = m_scopes.begin();
-        for (; it != m_scopes.end(); ++it)
-        {
-            if (pSettings->r_string((*it), "scope_name") == item_section_name)
-                return true;
-        }
-        return false;
-    }
-    //	   return true;
+    if (m_eScopeStatus == ALife::eAddonAttachable && IsScopeAttached() &&
+        m_cur_scope < m_scopes.size() && GetScopeName() == item_section_name)
+        return true;
     else if (m_eSilencerStatus == ALife::eAddonAttachable &&
         0 != (m_flagsAddOnState & CSE_ALifeItemWeapon::eWeaponAddonSilencer) && (m_sSilencerName == item_section_name))
         return true;
@@ -908,12 +898,14 @@ bool CWeaponMagazined::Attach(PIItem pIItem, bool b_send_event)
         (m_flagsAddOnState & CSE_ALifeItemWeapon::eWeaponAddonScope) == 0 /*&&
        (m_scopes[cur_scope]->m_sScopeName == pIItem->object().cNameSect())*/)
     {
-        auto it = m_scopes.begin();
-        for (; it != m_scopes.end(); ++it)
+        const auto it = std::find_if(m_scopes.begin(), m_scopes.end(), [pIItem](const shared_str& section)
         {
-            if (pSettings->r_string((*it), "scope_name") == pIItem->object().cNameSect())
-                m_cur_scope = u8(it - m_scopes.begin());
-        }
+            return pSettings->r_string(section, "scope_name") == pIItem->object().cNameSect();
+        });
+        if (it == m_scopes.end())
+            return false;
+
+        m_cur_scope = u8(it - m_scopes.begin());
         m_flagsAddOnState |= CSE_ALifeItemWeapon::eWeaponAddonScope;
         result = true;
     }
@@ -950,20 +942,13 @@ bool CWeaponMagazined::Attach(PIItem pIItem, bool b_send_event)
         return inherited::Attach(pIItem, b_send_event);
 }
 
-bool CWeaponMagazined::DetachScope(const char* item_section_name, bool b_spawn_item)
+bool CWeaponMagazined::DetachScope(const char* item_section_name, bool)
 {
-    bool detached = false;
-    auto it = m_scopes.begin();
-    for (; it != m_scopes.end(); ++it)
-    {
-        LPCSTR iter_scope_name = pSettings->r_string((*it), "scope_name");
-        if (!xr_strcmp(iter_scope_name, item_section_name))
-        {
-            m_cur_scope = 0;
-            detached = true;
-        }
-    }
-    return detached;
+    if (!IsScopeAttached() || m_cur_scope >= m_scopes.size() || GetScopeName() != item_section_name)
+        return false;
+
+    m_cur_scope = 0;
+    return true;
 }
 
 bool CWeaponMagazined::Detach(const char* item_section_name, bool b_spawn_item)

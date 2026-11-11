@@ -1347,6 +1347,51 @@ void CWeapon::UpdateHUDAddonsVisibility()
         HudItemData()->set_bone_visible((use_soc_name ? wpn_grenade_launcher_soc : wpn_grenade_launcher), TRUE, TRUE);
 }
 
+void CWeapon::UpdateScopeVisuals()
+{
+    if (!IsGameTypeSingle())
+        return;
+
+    shared_str visual;
+    shared_str hud;
+    if (m_eScopeStatus == ALife::eAddonAttachable && IsScopeAttached() && m_cur_scope < m_scopes.size())
+    {
+        const auto& section = m_scopes[m_cur_scope];
+        visual = READ_IF_EXISTS(pSettings, r_string, section, "iwp_visual", nullptr);
+        hud = READ_IF_EXISTS(pSettings, r_string, section, "iwp_hud", nullptr);
+    }
+
+    if (visual)
+    {
+        if (!m_unscopedVisual)
+            m_unscopedVisual = cNameVisual();
+        cNameVisual_set(visual);
+    }
+    else if (m_unscopedVisual)
+    {
+        const auto base = m_unscopedVisual;
+        m_unscopedVisual = nullptr;
+        cNameVisual_set(base);
+    }
+
+    if (hud && !m_unscopedHud)
+        m_unscopedHud = hud_sect;
+    else if (!hud && m_unscopedHud)
+    {
+        hud = m_unscopedHud;
+        m_unscopedHud = nullptr;
+    }
+    if (hud && hud != hud_sect)
+    {
+        const bool attached = HudItemData() != nullptr;
+        if (attached)
+            g_player_hud->detach_item(this);
+        hud_sect = hud;
+        if (attached)
+            g_player_hud->attach_item(this);
+    }
+}
+
 void CWeapon::UpdateAddonsVisibility()
 {
     if (GamePersistent().GetHudTuner().is_active())
@@ -1357,6 +1402,7 @@ void CWeapon::UpdateAddonsVisibility()
     static shared_str wpn_grenade_launcher = WPN_GRENADE_LAUNCHER;
     static shared_str wpn_grenade_launcher_soc = WPN_GRENADE_LAUNCHER_SOC;
 
+    UpdateScopeVisuals();
     UpdateHUDAddonsVisibility();
 
     IKinematics* pWeaponVisual = smart_cast<IKinematics*>(Visual());

@@ -451,6 +451,9 @@ public:
     using SCOPES_VECTOR = xr_vector<shared_str>;
     SCOPES_VECTOR m_scopes;
     u8 m_cur_scope;
+    shared_str m_unscopedVisual;
+    shared_str m_unscopedHud;
+    void UpdateScopeVisuals();
 
     CWeaponAmmo* m_pCurrentAmmo;
     u8 m_ammoType;
