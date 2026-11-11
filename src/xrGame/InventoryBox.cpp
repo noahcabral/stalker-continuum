@@ -71,6 +71,13 @@ void CInventoryBox::OnEvent(NET_Packet& P, u16 type)
             break;
         }
 
+        if (auto* gameUI = CurrentGameUI(); gameUI &&
+            gameUI->GetActorMenu().GetMenuMode() == mmDeadBodySearch && gameUI->GetActorMenu().GetInvBox() == this)
+        {
+            if (auto* item = smart_cast<CInventoryItem*>(itm))
+                gameUI->OnInventoryAction(item, GE_OWNERSHIP_REJECT);
+        }
+
         bool just_before_destroy = !P.r_eof() && P.r_u8();
         bool dont_create_shell = (type == GE_TRADE_SELL) || just_before_destroy;
 

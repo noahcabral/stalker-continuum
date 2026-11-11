@@ -257,7 +257,8 @@ void CUIActorMenu::OnInventoryAction(PIItem pItem, u16 action_type)
     {
         m_pLists[eInventoryBeltList], m_pLists[eInventoryKnifeList], m_pLists[eInventoryPistolList], m_pLists[eInventoryAutomaticList],
         m_pLists[eInventoryBackpackList], m_pLists[eInventoryOutfitList], m_pLists[eInventoryHelmetList], m_pLists[eInventoryDetectorList],
-        m_pLists[eInventoryBagList], m_pLists[eTradeActorBagList], m_pLists[eTradeActorList]
+        m_pLists[eInventoryBagList], m_pLists[eTradeActorBagList], m_pLists[eTradeActorList],
+        m_pLists[eSearchLootActorBagList], m_pLists[eSearchLootBagList]
     };
 
     switch (action_type)
@@ -278,7 +279,9 @@ void CUIActorMenu::OnInventoryAction(PIItem pItem, u16 action_type)
         Msg("item place [%d]", pl);
 #endif // #ifndef MASTER_GOLD
 
-        if (pl.type == eItemPlaceSlot)
+        if (GetMenuMode() == mmDeadBodySearch && pItem->parent_id() != m_pActorInvOwner->object_id())
+            lst_to_add = GetListByType(iDeadBodyBag);
+        else if (pl.type == eItemPlaceSlot)
             lst_to_add = GetSlotList(pl.slot_id);
         else if (pl.type == eItemPlaceBelt)
             lst_to_add = GetListByType(iActorBelt);
@@ -309,10 +312,6 @@ void CUIActorMenu::OnInventoryAction(PIItem pItem, u16 action_type)
                 // break;
             }
         }
-        CUICellItem* ci = nullptr;
-        if (GetMenuMode() == mmDeadBodySearch && FindItemInList(m_pLists[eSearchLootBagList], pItem, ci))
-            break;
-
         if (!b_already)
         {
             if (lst_to_add)

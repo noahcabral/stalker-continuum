@@ -318,7 +318,9 @@ bool CInventory::DropItem(CGameObject* pObj, bool just_before_destroy, bool dont
     {
         IGameObject* pActor_owner = smart_cast<IGameObject*>(m_pOwner);
 
-        if (Level().CurrentViewEntity() == pActor_owner)
+        auto& menu = CurrentGameUI()->GetActorMenu();
+        if (Level().CurrentViewEntity() == pActor_owner ||
+            (menu.GetMenuMode() == mmDeadBodySearch && menu.GetPartner() == m_pOwner))
             CurrentGameUI()->OnInventoryAction(pIItem, GE_OWNERSHIP_REJECT);
     };
     pObj->H_SetParent(0, dont_create_shell);
