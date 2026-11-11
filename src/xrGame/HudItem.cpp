@@ -628,6 +628,11 @@ public:
     bool Play()
     {
         g_player_hud->detach_all_items();
+        if (const auto hands = pSettings->read_if_exists<pcstr>(hud_sect, "hands_rig", nullptr))
+        {
+            g_player_hud->BeginTemporaryHands(hands, hud_sect);
+            temporaryHands = true;
+        }
         g_player_hud->attach_item(this);
         const auto duration = PlayHUDMotion(motion,
             pSettings->read_if_exists<bool>(hud_sect, "blend", false), this, eShowing);
@@ -653,6 +658,13 @@ public:
 
     void OnAnimationEnd(u32) override { finished = true; }
 
+    void HoldPda()
+    {
+        motion = "anm_idle";
+        PlayHUDMotion(motion, true, this, eIdle);
+        finished = false;
+    }
+
     void OnMotionMark(u32, const motion_marks& mark) override
     {
         for (const pcstr name : { "left", "left2", "right", "right2" })
@@ -674,6 +686,7 @@ public:
     u16 itemId;
     u16 previousSlot;
     shared_str motion;
+    bool temporaryHands = false;
     void (*onComplete)();
     bool hasSound = false;
     bool allowSprint = false;
@@ -688,7 +701,11 @@ const CActor* committingActor = nullptr;
 void Detach()
 {
     if (g_player_hud)
+    {
         g_player_hud->detach_item(activeAnimation.get());
+        if (activeAnimation->temporaryHands)
+            g_player_hud->EndTemporaryHands();
+    }
     activeAnimation.reset();
 }
 }
@@ -740,6 +757,13 @@ bool Start(CActor* actor, pcstr section, u16 itemId, pcstr motion, void (*onComp
     return false;
 }
 
+void LowerPda(CActor* actor)
+{
+    if (Active(actor) && activeAnimation->HudSection() == "iwp_pda_anim")
+        Detach();
+    Start(actor, "iwp_pda_anim", u16(-1), "anm_hide");
+}
+
 void Stop(const CActor* actor)
 {
     if (activeAnimation && &activeAnimation->actor == actor)
@@ -780,6 +804,18 @@ void Update(CActor* actor)
         }
     }
     const auto onComplete = activeAnimation->onComplete;
+    if (onComplete && activeAnimation->HudSection() == "iwp_pda_anim" && activeAnimation->motion == "anm_show")
+    {
+        activeAnimation->onComplete = nullptr;
+        activeAnimation->HoldPda();
+        onComplete();
+        return;
+    }
+    if (activeAnimation->HudSection() == "iwp_pda_anim" && activeAnimation->motion == "anm_idle")
+    {
+        activeAnimation->HoldPda();
+        return;
+    }
     activeAnimation->Invoke("end_lua_callback");
     Detach();
     if (onComplete)

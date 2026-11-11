@@ -151,6 +151,19 @@ void CRender::Render()
 
     r_main.sync();
 
+#ifdef XRRENDER_R4_EXPORTS
+    if (auto* hud = g_pGameLevel->pHUD; hud && hud->WantsPdaTexture())
+    {
+        Target->u_setrt(RCache, Device.dwWidth, Device.dwHeight, Target->rt_PdaUi->pRT, nullptr, nullptr,
+            static_cast<ID3DDepthStencilView*>(nullptr));
+        RCache.ClearRT(Target->rt_PdaUi, Fcolor().set(0.f, 0.f, 0.f, 1.f));
+        RCache.set_Stencil(FALSE);
+        RCache.set_CullMode(CULL_NONE);
+        RCache.set_ColorWriteEnable();
+        hud->DrawPdaTexture();
+    }
+#endif
+
     if (ps_r2_ls_flags.test(R2FLAG_ZFILL))
     {
         // flush

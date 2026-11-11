@@ -128,13 +128,15 @@ public:
     player_hud() = default;
     ~player_hud();
     void load(const shared_str& model_name);
+    void BeginTemporaryHands(const shared_str& section, const shared_str& itemSection);
+    void EndTemporaryHands();
     void load_default() { load("actor_hud_05"); };
     void update(const Fmatrix& trans);
     void render_hud(u32 context_id, IRenderable* root);
     void render_item_ui() const;
     bool render_item_ui_query() const;
     u32 anim_play(u16 part, const MotionID& M, BOOL bMixIn, const CMotionDef*& md, float speed, IKinematicsAnimated* itemModel);
-    const shared_str& section_name() const { return m_sect_name; }
+    const shared_str& section_name() const { return m_baseHands ? m_baseHandsSection : m_sect_name; }
     attachable_hud_item* create_hud_item(const shared_str& sect);
 
     void attach_item(CHudItem* item);
@@ -155,6 +157,7 @@ public:
     void OnMovementChanged(ACTOR_DEFS::EMoveCommand cmd) const;
 
 private:
+    IKinematicsAnimated* HandsForItem(const shared_str& section) const;
     void load_ancors();
     void update_inertion(Fmatrix& trans) const;
     void update_additional(Fmatrix& trans) const;
@@ -167,6 +170,10 @@ private:
 
     Fmatrix m_transform{ Fidentity };
     IKinematicsAnimated* m_model{};
+    IKinematicsAnimated* m_baseHands{};
+    shared_str m_baseHandsSection;
+    shared_str m_nextHandsSection;
+    shared_str m_temporaryItemSection;
     xr_vector<u16> m_ancors;
     attachable_hud_item* m_attached_items[2]{};
     xr_unordered_map<shared_str, attachable_hud_item*> m_pool;

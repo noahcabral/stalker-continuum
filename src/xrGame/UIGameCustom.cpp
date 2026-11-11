@@ -1,5 +1,6 @@
 #include "pch_script.h"
 #include "UIGameCustom.h"
+#include "xrEngine/XR_IOConsole.h"
 #include "Level.h"
 #include "ui/UIXmlInit.h"
 #include "xrUICore/Static/UIStatic.h"
@@ -233,7 +234,8 @@ bool CUIGameCustom::ShowPdaMenu()
         return false;
     }
     auto* actor = Level().CurrentEntity() ? Level().CurrentEntity()->cast_actor() : nullptr;
-    if (IsGameTypeSingle() && actor && pSettings->section_exist("iwp_pda_anim"))
+    if (IsGameTypeSingle() && actor && pSettings->section_exist("iwp_pda_anim") &&
+        xr_strcmp(Console->GetString("renderer"), "renderer_r4") == 0)
     {
         if (ActorHudAnimator::Active(actor))
             return false;

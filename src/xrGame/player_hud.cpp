@@ -516,6 +516,11 @@ u32 attachable_hud_item::anim_play(const shared_str& anm_name_b, BOOL bMixIn, co
 
 player_hud::~player_hud()
 {
+    if (m_baseHands)
+    {
+        IRenderVisual* visual = m_baseHands->dcast_RenderVisual();
+        GEnv.Render->model_Delete(visual);
+    }
     if (m_model)
     {
         IRenderVisual* v = m_model->dcast_RenderVisual();
@@ -529,8 +534,46 @@ player_hud::~player_hud()
     m_pool.clear();
 }
 
+void player_hud::BeginTemporaryHands(const shared_str& section, const shared_str& itemSection)
+{
+    R_ASSERT(m_model && !m_baseHands);
+    const auto* visual = pSettings->r_string(section, "visual");
+    auto* hands = smart_cast<IKinematicsAnimated*>(GEnv.Render->model_Create(visual));
+    R_ASSERT(hands);
+    m_baseHands = std::exchange(m_model, hands);
+    m_baseHandsSection = std::exchange(m_sect_name, section);
+    m_temporaryItemSection = itemSection;
+    load_ancors();
+}
+
+void player_hud::EndTemporaryHands()
+{
+    if (!m_baseHands)
+        return;
+    auto* visual = m_model->dcast_RenderVisual();
+    GEnv.Render->model_Delete(visual);
+    m_model = std::exchange(m_baseHands, nullptr);
+    m_sect_name = m_baseHandsSection;
+    m_baseHandsSection = nullptr;
+    m_temporaryItemSection = nullptr;
+    load_ancors();
+    const auto pending = std::exchange(m_nextHandsSection, shared_str{});
+    if (pending)
+        load(pending);
+}
+
+IKinematicsAnimated* player_hud::HandsForItem(const shared_str& section) const
+{
+    return m_baseHands && section != m_temporaryItemSection ? m_baseHands : m_model;
+}
+
 void player_hud::load(const shared_str& player_hud_sect)
 {
+    if (m_baseHands)
+    {
+        m_nextHandsSection = player_hud_sect;
+        return;
+    }
     if (player_hud_sect == m_sect_name)
         return;
 
@@ -647,7 +690,7 @@ u32 player_hud::motion_length(const shared_str& anim_name, const shared_str& hud
         return 100; // ms TEMPORARY
     R_ASSERT2(pm,
         make_string("hudItem model [%s] has no motion with alias [%s]", hud_name.c_str(), anim_name.c_str()).c_str());
-    IKinematicsAnimated* model = pi->m_monolithic ? smart_cast<IKinematicsAnimated*>(pi->m_model) : nullptr;
+    IKinematicsAnimated* model = pi->m_monolithic ? smart_cast<IKinematicsAnimated*>(pi->m_model) : HandsForItem(hud_name);
     return motion_length(pm->m_animations[0].mid, md, speed, model);
 }
 
@@ -875,7 +918,7 @@ attachable_hud_item* player_hud::create_hud_item(const shared_str& sect)
     auto& item = m_pool[sect];
 
     if (!item)
-        item = xr_new<attachable_hud_item>(this, sect, m_model);
+        item = xr_new<attachable_hud_item>(this, sect, HandsForItem(sect));
 
     return item;
 }

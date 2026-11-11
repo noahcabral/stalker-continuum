@@ -61,6 +61,9 @@ CUICursor::~CUICursor()
 u32 last_render_frame = 0;
 void CUICursor::OnRender()
 {
+    if (m_textureMode && IsVisible())
+        return;
+
     g_btnHint->OnRender();
     g_statHint->OnRender();
 
@@ -82,6 +85,13 @@ void CUICursor::OnRender()
     }
 #endif
 
+    DrawForTexture();
+}
+
+void CUICursor::DrawForTexture()
+{
+    if (!IsVisible())
+        return;
     m_static->SetWndPos(vPos);
     m_static->Update();
     m_static->Draw();

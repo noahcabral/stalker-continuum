@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "ui/UIPdaWnd.h"
 #include "HUDManager.h"
 #include "HUDTarget.h"
 #include "Actor.h"
@@ -144,6 +145,17 @@ void CHUDManager::RenderActiveItemUI()
         return;
 
     g_player_hud->render_item_ui();
+}
+
+bool CHUDManager::WantsPdaTexture()
+{
+    return b_online && pUIGame && pUIGame->GetPdaMenu().UsesHandheldScreen();
+}
+
+void CHUDManager::DrawPdaTexture()
+{
+    if (WantsPdaTexture())
+        pUIGame->GetPdaMenu().DrawHandheldScreen();
 }
 
 extern ENGINE_API bool bShowPauseString;

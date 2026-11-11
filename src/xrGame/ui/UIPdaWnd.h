@@ -64,8 +64,11 @@ public:
     virtual void Update();
     virtual void Show(bool status);
     void ShowAfterRaise();
+    bool UsesHandheldScreen() const { return m_raisedPda && IsShown(); }
+    void DrawHandheldScreen();
 private:
     bool m_raisedPda = false;
+    bool m_drawingHandheldScreen = false;
 public:
     virtual bool OnMouseAction(float x, float y, EUIMessages mouse_action)
     {

@@ -10,6 +10,7 @@ class XRUICORE_API CUICursor : public pureRender, public CDeviceResetNotifier, p
     Fvector2 vPrevPos{};
     Fvector2 correction;
     bool bVisible{};
+    bool m_textureMode{};
     bool m_bound_to_system_cursor{};
 
     void InitInternal();
@@ -25,6 +26,8 @@ public:
     bool IsVisible() const { return bVisible; }
 
     void OnRender() override;
+    void SetTextureMode(bool enabled) { m_textureMode = enabled; }
+    void DrawForTexture();
     void OnDeviceReset() override;
     void OnUIReset() override;
 

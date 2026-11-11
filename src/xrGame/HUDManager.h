@@ -53,6 +53,8 @@ public:
 
     virtual void RenderActiveItemUI();
     virtual bool RenderActiveItemUIQuery();
+    bool WantsPdaTexture() override;
+    void DrawPdaTexture() override;
 
     // Lain: added
     void SetRenderable(bool renderable) { psHUD_Flags.set(HUD_DRAW_RT2, renderable); }

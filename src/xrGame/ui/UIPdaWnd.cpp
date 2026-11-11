@@ -3,6 +3,8 @@
 #include "PDA.h"
 #include "Actor.h"
 #include "ActorHudAnimator.h"
+#include "xrUICore/Cursor/UICursor.h"
+#include "xrEngine/xr_level_controller.h"
 
 #include "xrUICore/XML/xrUIXmlParser.h"
 #include "UIXmlInit.h"
@@ -53,6 +55,8 @@ CUIPdaWnd::CUIPdaWnd() : CUIDialogWnd(CUIPdaWnd::GetDebugType())
 
 CUIPdaWnd::~CUIPdaWnd()
 {
+    if (m_raisedPda)
+        GetUICursor().SetTextureMode(false);
     if (pUIMapWnd)
         delete_data(pUIMapWnd);
     if (pUITaskWnd)
@@ -224,6 +228,7 @@ void CUIPdaWnd::ShowAfterRaise()
         return;
     m_raisedPda = true;
     ShowDialog(true);
+    GetUICursor().SetTextureMode(true);
 }
 
 void CUIPdaWnd::Show(bool status)
@@ -247,7 +252,8 @@ void CUIPdaWnd::Show(bool status)
         if (std::exchange(m_raisedPda, false) && g_pGameLevel)
         {
             auto* actor = Level().CurrentEntity() ? Level().CurrentEntity()->cast_actor() : nullptr;
-            ActorHudAnimator::Start(actor, "iwp_pda_anim", u16(-1), "anm_hide");
+            GetUICursor().SetTextureMode(false);
+            ActorHudAnimator::LowerPda(actor);
         }
         InventoryUtilities::SendInfoToActor("ui_pda_hide");
         CurrentGameUI()->UIMainIngameWnd->SetFlashIconState_(CUIMainIngameWnd::efiPdaTask, false);
@@ -263,6 +269,15 @@ void CUIPdaWnd::Show(bool status)
 
 void CUIPdaWnd::Update()
 {
+    if (UsesHandheldScreen() && g_pGameLevel)
+    {
+        auto* entity = Level().CurrentEntity();
+        if (!entity || !ActorHudAnimator::Active(entity->cast_actor()))
+        {
+            HideDialog();
+            return;
+        }
+    }
     inherited::Update();
 
     if (m_pActiveDialog)
@@ -396,8 +411,19 @@ void CUIPdaWnd::Show_ContactsWnd(bool status)
     }
 }
 
+void CUIPdaWnd::DrawHandheldScreen()
+{
+    m_drawingHandheldScreen = true;
+    Draw();
+    GetUICursor().DrawForTexture();
+    UI().RenderFont();
+    m_drawingHandheldScreen = false;
+}
+
 void CUIPdaWnd::Draw()
 {
+    if (UsesHandheldScreen() && !m_drawingHandheldScreen)
+        return;
     inherited::Draw();
     //.	DrawUpdatedSections();
     DrawHint();
@@ -491,6 +517,21 @@ void RearrangeTabButtons(CUITabControl* pTab)
 
 bool CUIPdaWnd::OnKeyboardAction(int dik, EUIMessages keyboard_action)
 {
+    if (UsesHandheldScreen() && keyboard_action == WINDOW_KEY_PRESSED)
+    {
+        if (IsBinded(kACTIVE_JOBS, dik))
+        {
+            HideDialog();
+            return true;
+        }
+        if (IsBinded(kINVENTORY, dik))
+        {
+            if (auto* gameUI = CurrentGameUI())
+                gameUI->ShowActorMenu();
+            return true;
+        }
+    }
+
     if (inherited::OnKeyboardAction(dik, keyboard_action))
         return true;
 
