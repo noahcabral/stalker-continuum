@@ -12,6 +12,7 @@
 #include "ui/UIMessagesWindow.h"
 #include "ui/UIHudStatesWnd.h"
 #include "Actor.h"
+#include "ActorHudAnimator.h"
 #include "Inventory.h"
 #include "game_cl_base.h"
 
@@ -230,6 +231,19 @@ bool CUIGameCustom::ShowPdaMenu()
     {
         PdaMenu->HideDialog();
         return false;
+    }
+    auto* actor = Level().CurrentEntity() ? Level().CurrentEntity()->cast_actor() : nullptr;
+    if (IsGameTypeSingle() && actor && pSettings->section_exist("iwp_pda_anim"))
+    {
+        if (ActorHudAnimator::Active(actor))
+            return false;
+        HideActorMenu();
+        if (ActorHudAnimator::Start(actor, "iwp_pda_anim", u16(-1), "anm_show", +[]()
+        {
+            if (auto* gameUI = CurrentGameUI())
+                gameUI->GetPdaMenu().ShowAfterRaise();
+        }))
+            return true;
     }
     HideActorMenu();
     PdaMenu->ShowDialog(true);

@@ -5,7 +5,8 @@ class CHudItem;
 
 namespace ActorHudAnimator
 {
-bool Start(CActor* actor, pcstr section, u16 itemId = u16(-1));
+bool Start(CActor* actor, pcstr section, u16 itemId = u16(-1),
+    pcstr motion = "anm_show", void (*onComplete)() = nullptr);
 void Stop(const CActor* actor);
 void Destroy(const CActor* actor);
 void Update(CActor* actor);

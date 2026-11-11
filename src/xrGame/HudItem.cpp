@@ -513,8 +513,8 @@ namespace
 class UseAnimation final : public CHudItem
 {
 public:
-    UseAnimation(CActor& actor, pcstr section, u16 itemId)
-        : actor(actor), itemId(itemId), previousSlot(actor.inventory().GetActiveSlot())
+    UseAnimation(CActor& actor, pcstr section, u16 itemId, pcstr motion, void (*onComplete)())
+        : actor(actor), itemId(itemId), previousSlot(actor.inventory().GetActiveSlot()), motion(motion), onComplete(onComplete)
     {
         hud_sect = section;
         SetState(eShowing);
@@ -522,17 +522,18 @@ public:
         allowSprint = settings.read_if_exists<bool>(section, "can_sprint", false);
         disableInput = settings.read_if_exists<bool>(section, "disable_input", false) ||
             settings.read_if_exists<bool>(section, "disable_key_input", false);
-        const auto sound = READ_IF_EXISTS(pSettings, r_string, section, "sound_1", nullptr);
+        const pcstr soundKey = this->motion == "anm_hide" ? "sound_hide" : "sound_1";
+        const auto sound = READ_IF_EXISTS(pSettings, r_string, section, soundKey, nullptr);
         hasSound = sound && xr_strcmp(sound, "$silent");
         if (hasSound)
-            m_sounds.LoadSound(section, "sound_1", "animation");
+            m_sounds.LoadSound(section, soundKey, "animation");
     }
 
     bool Play()
     {
         g_player_hud->detach_all_items();
         g_player_hud->attach_item(this);
-        const auto duration = PlayHUDMotion("anm_show",
+        const auto duration = PlayHUDMotion(motion,
             pSettings->read_if_exists<bool>(hud_sect, "blend", false), this, eShowing);
         if (!duration)
             return false;
@@ -576,6 +577,8 @@ public:
     CActor& actor;
     u16 itemId;
     u16 previousSlot;
+    shared_str motion;
+    void (*onComplete)();
     bool hasSound = false;
     bool allowSprint = false;
     bool disableInput = false;
@@ -619,7 +622,7 @@ bool CommittingItem(const CActor* actor)
     return committingActor == actor;
 }
 
-bool Start(CActor* actor, pcstr section, u16 itemId)
+bool Start(CActor* actor, pcstr section, u16 itemId, pcstr motion, void (*onComplete)())
 {
     if (!actor || !actor->g_Alive() || !actor->IsFocused() || !actor->HUDview() || activeAnimation ||
         !g_player_hud || !section || !pSettings->section_exist(section))
@@ -633,7 +636,7 @@ bool Start(CActor* actor, pcstr section, u16 itemId)
             section = selected;
     }
 
-    activeAnimation = std::make_unique<UseAnimation>(*actor, section, itemId);
+    activeAnimation = std::make_unique<UseAnimation>(*actor, section, itemId, motion, onComplete);
     if (activeAnimation->Play())
         return true;
 
@@ -680,8 +683,11 @@ void Update(CActor* actor)
             committingActor = nullptr;
         }
     }
+    const auto onComplete = activeAnimation->onComplete;
     activeAnimation->Invoke("end_lua_callback");
     Detach();
+    if (onComplete)
+        onComplete();
 }
 
 bool BlocksAction(const CActor* actor, int action)

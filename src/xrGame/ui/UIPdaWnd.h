@@ -63,6 +63,10 @@ public:
     virtual void Draw();
     virtual void Update();
     virtual void Show(bool status);
+    void ShowAfterRaise();
+private:
+    bool m_raisedPda = false;
+public:
     virtual bool OnMouseAction(float x, float y, EUIMessages mouse_action)
     {
         CUIDialogWnd::OnMouseAction(x, y, mouse_action);

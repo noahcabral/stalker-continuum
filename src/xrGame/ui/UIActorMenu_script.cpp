@@ -152,6 +152,7 @@ void CUIActorMenu::script_register(lua_State* luaState)
     module(luaState, "ActorMenu")
     [
         def("get_pda_menu", +[](){ return &CurrentGameUI()->GetPdaMenu(); }),
+        def("toggle_pda_menu", +[](){ return CurrentGameUI() && CurrentGameUI()->ShowPdaMenu(); }),
         def("get_actor_menu", +[](){ return &CurrentGameUI()->GetActorMenu(); }),
         def("get_menu_mode", +[](){ return CurrentGameUI()->GetActorMenu().GetMenuMode(); }),
         def("get_maingame", +[](){ return CurrentGameUI()->UIMainIngameWnd; })

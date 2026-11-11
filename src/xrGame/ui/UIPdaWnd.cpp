@@ -1,6 +1,8 @@
 #include "StdAfx.h"
 #include "UIPdaWnd.h"
 #include "PDA.h"
+#include "Actor.h"
+#include "ActorHudAnimator.h"
 
 #include "xrUICore/XML/xrUIXmlParser.h"
 #include "UIXmlInit.h"
@@ -216,6 +218,14 @@ void CUIPdaWnd::SendMessage(CUIWindow* pWnd, s16 msg, void* pData)
     };
 }
 
+void CUIPdaWnd::ShowAfterRaise()
+{
+    if (IsShown())
+        return;
+    m_raisedPda = true;
+    ShowDialog(true);
+}
+
 void CUIPdaWnd::Show(bool status)
 {
     inherited::Show(status);
@@ -234,6 +244,11 @@ void CUIPdaWnd::Show(bool status)
     }
     else
     {
+        if (std::exchange(m_raisedPda, false) && g_pGameLevel)
+        {
+            auto* actor = Level().CurrentEntity() ? Level().CurrentEntity()->cast_actor() : nullptr;
+            ActorHudAnimator::Start(actor, "iwp_pda_anim", u16(-1), "anm_hide");
+        }
         InventoryUtilities::SendInfoToActor("ui_pda_hide");
         CurrentGameUI()->UIMainIngameWnd->SetFlashIconState_(CUIMainIngameWnd::efiPdaTask, false);
         if (m_pActiveDialog)
