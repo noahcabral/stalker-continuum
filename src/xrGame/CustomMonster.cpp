@@ -337,7 +337,7 @@ void CCustomMonster::ExportCampaignState(NET_Packet& packet)
             for (u32 i = 0; i < animated->LL_PartBlendsCount(part); ++i)
             {
                 const auto* blend = animated->LL_PartBlend(part, i);
-                if (blend->channel == 0 && blend->blend_state() == CBlend::eAccrue)
+                if (blend && blend->channel == 0 && blend->blend_state() == CBlend::eAccrue)
                     cycle = blend;
             }
         }
@@ -392,7 +392,7 @@ void CCustomMonster::ImportCampaignState(NET_Packet& packet)
         for (u32 i = 0; i < animated->LL_PartBlendsCount(part); ++i)
         {
             auto* blend = animated->LL_PartBlend(part, i);
-            if (blend->channel == 0 && blend->blend_state() == CBlend::eAccrue)
+            if (blend && blend->channel == 0 && blend->blend_state() == CBlend::eAccrue)
                 current = blend;
         }
         if (!current || current->motionID != motion)
