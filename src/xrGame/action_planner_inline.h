@@ -54,6 +54,17 @@ void CPlanner::update()
     this->solve();
     m_solving = false;
 
+    // An empty plan can mean the target is already satisfied, or that no
+    // operator can currently reach it. Neither case has an action to execute.
+    if (this->solution().empty())
+    {
+        if (initialized())
+            finalize();
+        if (this->m_failed && strstr(Core.Params, "-iwp_planner_trace"))
+            Msg("[IWP_PLANNER] no reachable action; waiting for a new world state");
+        return;
+    }
+
 #ifdef LOG_ACTION
     // printing solution
     if (m_use_log)
@@ -86,12 +97,6 @@ void CPlanner::update()
 	if (bDbgAct && this->m_failed && current_action().m_action_name)
 		Msg("! ERROR: there is no action sequence, which can transfer current world state to the target one: action[%s]", current_action().m_action_name);
 #endif
-
-    THROW(!this->solution().empty());
-	//Alundaio:
-	if (this->solution().empty())
-		return;
-	//-Alundaio
 
     if (initialized())
     {

@@ -508,6 +508,23 @@ bool CUIMapWnd::OnMouseAction(float x, float y, EUIMessages mouse_action)
     {
         switch (mouse_action)
         {
+        case WINDOW_CBUTTON_DOWN:
+        {
+            if (!IsGameTypeSingle() || !pSettings->section_exist("iwp_hud_compat"))
+                break;
+            const auto map = m_GameMaps.find(Level().name());
+            if (map == m_GameMaps.end())
+                break;
+            Frect bounds;
+            map->second->GetAbsoluteRect(bounds);
+            if (!bounds.in(cursor_pos1))
+                break;
+            cursor_pos1.sub(bounds.lt);
+            Level().MapManager().TogglePdaPing(
+                map->second->ConvertLocalToReal(cursor_pos1, map->second->BoundRect()));
+            return true;
+        }
+
         case WINDOW_RBUTTON_UP:
             ActivatePropertiesBox(NULL);
             break;

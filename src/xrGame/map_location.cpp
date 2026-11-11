@@ -232,35 +232,15 @@ void CMapLocation::InitUserSpot(const shared_str& level_name, const Fvector& pos
     m_cached.m_Position.set(pos.x, pos.z);
     m_cached.m_Direction.set(0.f, 0.f);
 
-    if (ai().get_alife())
-    {
-        const CGameGraph::SLevel& level = ai().game_graph().header().level(level_name.c_str());
-        float min_dist = 128; // flt_max;
-
-        GameGraph::_GRAPH_ID n = ai().game_graph().header().vertex_count();
-
-        for (GameGraph::_GRAPH_ID i = 0; i < n; ++i)
-        {
-            if (ai().game_graph().vertex(i)->level_id() == level.id())
-            {
-                float distance = ai().game_graph().vertex(i)->game_point().distance_to_sqr(m_position_global);
-                if (distance < min_dist)
-                {
-                    min_dist = distance;
-                    m_cached.m_graphID = i;
-                }
-            }
-        }
-        if (!ai().game_graph().vertex(m_cached.m_graphID))
-        {
-            Msg("qweasdd! Cannot assign game vertex for CUserDefinedMapLocation [map=%s]", level_name.c_str());
-            R_ASSERT(ai().game_graph().vertex(m_cached.m_graphID));
-        }
-    }
+    SetUserDefinedFlag(true);
+    SetSerializable(false);
+    m_cached.m_Actuality = true;
 }
 
 void CMapLocation::CalcPosition()
 {
+    if (IsUserDefined())
+        return;
     if (m_flags.test(ePosToActor) && Level().CurrentEntity())
     {
         m_position_global = Level().CurrentEntity()->Position();
@@ -352,7 +332,9 @@ bool CMapLocation::Update() // returns actual
 
     IGameObject* pObject = Level().Objects.net_Find(m_objectID);
 
-    if (m_owner_se_object || (!IsGameTypeSingle() && pObject))
+    if (IsUserDefined())
+        m_cached.m_Actuality = m_cached.m_LevelName == Level().name();
+    else if (m_owner_se_object || (!IsGameTypeSingle() && pObject))
     {
         m_cached.m_Actuality = true;
         if (IsGameTypeSingle())
@@ -383,12 +365,12 @@ void CMapLocation::UpdateSpot(CUICustomMap* map, CMapSpot* sp)
     {
         bool b_alife = !!ai().get_alife();
 
-        if (b_alife && m_flags.test(eHideInOffline) && !m_owner_se_object->m_bOnline)
+        if (b_alife && m_owner_se_object && m_flags.test(eHideInOffline) && !m_owner_se_object->m_bOnline)
         {
             return;
         }
 
-        if (b_alife && m_owner_se_object->m_flags.test(CSE_ALifeObject::flVisibleForMap) == FALSE)
+        if (b_alife && m_owner_se_object && m_owner_se_object->m_flags.test(CSE_ALifeObject::flVisibleForMap) == FALSE)
         {
             return;
         }
@@ -460,7 +442,7 @@ void CMapLocation::UpdateSpot(CUICustomMap* map, CMapSpot* sp)
         if (b_pointer)
             UpdateSpotPointer(map, GetSpotPointer(sp));
     }
-    else if (Level().name() == map->MapName() && GetSpotPointer(sp))
+    else if (m_owner_se_object && Level().name() == map->MapName() && GetSpotPointer(sp))
     {
         GameGraph::_GRAPH_ID dest_graph_id;
 

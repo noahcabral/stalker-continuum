@@ -453,7 +453,7 @@ void CWeapon::Load(LPCSTR section)
     {
         if (m_zoom_params.m_fZoomRotateTime >= 1.f)
             m_zoom_params.m_fZoomRotateTime = 1.f / m_zoom_params.m_fZoomRotateTime;
-        m_zoom_params.m_fZoomRotateTime = std::clamp(m_zoom_params.m_fZoomRotateTime, 0.045f, 0.10f);
+        m_zoom_params.m_fZoomRotateTime = std::clamp(m_zoom_params.m_fZoomRotateTime * 1.25f, 0.060f, 0.125f);
     }
 
     if (m_eScopeStatus == ALife::eAddonAttachable)

@@ -106,6 +106,25 @@ CMapLocation* CMapManager::AddMapLocation(const shared_str& spot_type, u16 id)
     return l;
 }
 
+void CMapManager::TogglePdaPing(const Fvector2& position)
+{
+    constexpr u16 markerID = u16(-1);
+    const shared_str type = "iwp_pda_ping";
+    if (auto* existing = GetMapLocation(type, markerID))
+    {
+        const bool samePoint = existing->GetPosition().distance_to(position) <= 4.f;
+        RemoveMapLocation(existing);
+        if (samePoint)
+            return;
+    }
+
+    auto* ping = xr_new<CMapLocation>(type.c_str(), markerID);
+    const auto* actor = Level().CurrentViewEntity();
+    ping->InitUserSpot(Level().name(), Fvector().set(position.x, actor ? actor->Position().y : 0.f, position.y));
+    Locations().emplace_back(type, markerID);
+    Locations().back().location = ping;
+}
+
 CMapLocation* CMapManager::AddRelationLocation(CInventoryOwner* pInvOwner)
 {
     if (!Level().CurrentViewEntity())

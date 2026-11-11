@@ -110,12 +110,15 @@ private:
     {
         u16 source;
         Fmatrix bindOffset;
+        bool spineSubtree{};
         Fmatrix pose;
     };
     IRenderVisual* m_firstPersonBody{};
     IRenderVisual* m_firstPersonBodySource{};
     shared_str m_firstPersonBodyName;
     float m_firstPersonBodyShift{};
+    u16 m_firstPersonBodySpineParent{};
+    Fvector m_firstPersonBodyBindForward{};
     Fmatrix m_firstPersonBodyTransform{};
     xr_vector<FirstPersonBodyBone> m_firstPersonBodyBones;
     bool UsesIwpPlayerVisual() const;

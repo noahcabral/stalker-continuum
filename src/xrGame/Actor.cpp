@@ -1600,8 +1600,13 @@ void CActor::UpdateFirstPersonBody()
         const u16 sourceSpineParent = spineParent != BI_NONE ?
             source->LL_BoneID(body->LL_BoneName_dbg(spineParent)) : BI_NONE;
         Fmatrix inverseSpineParent;
+        m_firstPersonBodySpineParent = sourceSpineParent;
         if (sourceSpineParent != BI_NONE)
+        {
             inverseSpineParent.invert(bodyBind[spineParent]);
+            // The donor rigid body faces -Z in its bind pose.
+            inverseSpineParent.transform_dir(m_firstPersonBodyBindForward, Fvector().set(0.f, 0.f, -1.f));
+        }
         m_firstPersonBodyBones.resize(body->LL_BoneCount());
         for (u16 i = 0; i != body->LL_BoneCount(); ++i)
         {
@@ -1625,6 +1630,7 @@ void CActor::UpdateFirstPersonBody()
                 if (parent == spine)
                 {
                     bone.source = sourceSpineParent;
+                    bone.spineSubtree = true;
                     bone.bindOffset.mul_43(inverseSpineParent, bodyBind[i]);
                 }
             }
@@ -1641,8 +1647,32 @@ void CActor::UpdateFirstPersonBody()
     // The first-person proxy needs this frame's actor pose even when the distant
     // skeleton cache would normally skip its update.
     source->CalculateBones(TRUE);
+    // The donor's legs keep their authored pelvis and stride. Only the rigid
+    // torso removes pelvis yaw, so the jacket stays square to the camera.
+    Fmatrix spineParentPose;
+    if (m_firstPersonBodySpineParent != BI_NONE)
+    {
+        const auto& animated = source->LL_GetTransform(m_firstPersonBodySpineParent);
+        Fvector forward;
+        animated.transform_dir(forward, m_firstPersonBodyBindForward);
+        spineParentPose = animated;
+        if (forward.x * forward.x + forward.z * forward.z > EPS_S)
+        {
+            Fmatrix correction;
+            correction.rotateY(-std::atan2(forward.x, forward.z));
+            spineParentPose.mul_43(correction, animated);
+            spineParentPose.c = animated.c;
+        }
+        if (strstr(Core.Params, "-iwp_body_heading_trace"))
+        {
+            Fvector corrected;
+            spineParentPose.transform_dir(corrected, m_firstPersonBodyBindForward);
+            Msg("[IWP_BODY_HEADING] movement=%u authored=%.4f corrected=%.4f",
+                mstate_real, std::atan2(forward.x, forward.z), std::atan2(corrected.x, corrected.z));
+        }
+    }
     for (auto& bone : m_firstPersonBodyBones)
-        bone.pose.mul_43(source->LL_GetTransform(bone.source), bone.bindOffset);
+        bone.pose.mul_43(bone.spineSubtree ? spineParentPose : source->LL_GetTransform(bone.source), bone.bindOffset);
 
     // Match camera yaw without tilting the body with camera pitch or roll.
     // Reading yaw directly also works when the view points straight down.
