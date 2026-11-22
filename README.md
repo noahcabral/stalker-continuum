@@ -1,6 +1,6 @@
 # S.T.A.L.K.E.R.: Continuum
 
-S.T.A.L.K.E.R.: Continuum is a Windows project that brings the S.T.A.L.K.E.R. campaigns and Advanced Weapon Pack together in a standalone build. Clear Sky is the first campaign in development. The current Clear Sky work covers the Marsh opening and the Cordon story through the return to Sidorovich. Later areas and side quests are still in development.
+S.T.A.L.K.E.R.: Continuum is a standalone multiplayer mod for Windows that brings the S.T.A.L.K.E.R. trilogy campaigns and Advanced Weapon Pack together. Clear Sky is the first campaign in development. The current Clear Sky work covers the Marsh opening and the Cordon story through the return to Sidorovich. Later areas and side quests are still in development.
 
 ## Install and play
 
