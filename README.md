@@ -10,6 +10,8 @@ Use the S.T.A.L.K.E.R.: Continuum Launcher. It can find an existing installation
 - [Launcher source and build instructions](tools/continuum-launcher)
 - [Report an S.T.A.L.K.E.R.: Continuum issue](https://github.com/noahcabral/stalker-continuum/issues/new)
 
+After a fresh installation, select **Update** if it appears before selecting **Play**. Game version **0.1.0** starts a new campaign in the Clear Sky Marsh. The launcher keeps existing saves when applying the update. [Game 0.1.0 release notes](https://github.com/noahcabral/stalker-continuum/releases/tag/awp-standalone-v0.1.0)
+
 The earlier [LAN preview](https://github.com/noahcabral/stalker-continuum/releases/tag/v0.1.0-lan-preview.1) is a separate test release. The full trilogy campaign and its multiplayer acceptance testing are in progress.
 
 ## Credits
