@@ -70,22 +70,34 @@ CMainMenu::CMainMenu()
 {
     ZoneScoped;
 
-    class CResetEventCb : public CEventNotifierCallbackWithCid
+    class CScriptEngineEventCb : public CEventNotifierCallbackWithCid
     {
         CMainMenu* m_mainmenu;
+        bool m_started;
 
     public:
-        CResetEventCb(CID cid, CMainMenu* mm) : CEventNotifierCallbackWithCid(cid), m_mainmenu(mm) {}
+        CScriptEngineEventCb(CID cid, CMainMenu* mm, bool started)
+            : CEventNotifierCallbackWithCid(cid), m_mainmenu(mm), m_started(started) {}
+
         void ProcessEvent() override
         {
-            if (m_mainmenu->IsActive())
-                m_mainmenu->ReloadUI();
-            else
+            if (!m_started)
+            {
+                // Release Lua-owned UI while its original script state is still valid.
                 m_mainmenu->DestroyInternal(true);
+                m_mainmenu->CleanInternals();
+            }
+            else if (m_mainmenu->IsActive())
+            {
+                m_mainmenu->ReloadUI();
+            }
         }
     };
 
-    m_script_reset_event_cid = ai().template Subscribe<CResetEventCb>(CAI_Space::EVENT_SCRIPT_ENGINE_RESET, this);
+    m_script_reset_event_cid =
+        ai().template Subscribe<CScriptEngineEventCb>(CAI_Space::EVENT_SCRIPT_ENGINE_RESET, this, false);
+    m_script_started_event_cid =
+        ai().template Subscribe<CScriptEngineEventCb>(CAI_Space::EVENT_SCRIPT_ENGINE_STARTED, this, true);
 
     m_Flags.zero();
     m_startDialog = NULL;
@@ -158,6 +170,7 @@ CMainMenu::~CMainMenu()
     delete_data(m_pMB_ErrDlgs);
 
     ai().Unsubscribe(m_script_reset_event_cid, CAI_Space::EVENT_SCRIPT_ENGINE_RESET);
+    ai().Unsubscribe(m_script_started_event_cid, CAI_Space::EVENT_SCRIPT_ENGINE_STARTED);
 }
 
 void CMainMenu::Activate(bool bActivate)

@@ -519,7 +519,11 @@ bool CGameObject::net_Spawn(CSE_Abstract* DC)
     }
 
     reload(cNameSect().c_str());
-    if (!GEnv.isDedicatedServer && !(OnClient() && IsGameTypeSingle()))
+    const bool singlePlayer = IsGameTypeSingle();
+    // A campaign guest shares the host process but does not own its campaign script state.
+    const bool campaignGuest = singlePlayer && OnServer() &&
+        E->s_flags.test(M_SPAWN_OBJECT_CAMPAIGN_PLAYER);
+    if (!GEnv.isDedicatedServer && !(singlePlayer && OnClient()) && !campaignGuest)
         scriptBinder.reload(cNameSect().c_str());
 
     reinit();
