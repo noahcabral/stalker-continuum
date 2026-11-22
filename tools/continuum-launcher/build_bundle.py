@@ -45,22 +45,26 @@ def build():
     )
 
     core_files = ("AwpInstallCore.cs", "AwpInstallNetwork.cs", "AwpRepairTransaction.cs")
-    compile_code("library", launcher / "AwpInstallCore.dll",
+    core = output / "AwpInstallCore.dll"
+    compile_code("library", core,
                  (installer / name for name in core_files),
                  ("System.IO.Compression.dll", "System.Web.Extensions.dll"))
 
-    members = sorted(path for path in launcher.rglob("*") if path.is_file())
+    core_member = "launcher/AwpInstallCore.dll"
+    members = {path.relative_to(root).as_posix(): path for path in sorted(launcher.rglob("*"))
+               if path.is_file() and path != launcher / core.name}
+    members[core_member] = core
     bundle = output / "launcher.bundle.zip"
     with ZipFile(bundle, "w", ZIP_DEFLATED) as archive:
-        for path in members:
-            archive.write(path, path.relative_to(root).as_posix())
+        for name, path in sorted(members.items()):
+            archive.write(path, name)
     exe = output / executable_name
     compile_code("winexe", exe, (installer / "AwpLauncherBootstrap.cs", metadata),
                  ("System.IO.Compression.dll", "System.Windows.Forms.dll"), bundle)
 
     receipt = {"version": version, "executableName": executable_name, "executable": sha(exe),
                "bundle": sha(bundle),
-               "members": {path.relative_to(root).as_posix(): sha(path) for path in members}}
+               "members": {name: sha(path) for name, path in members.items()}}
     (output / "receipt.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
     print(f"{exe}, {exe.stat().st_size} bytes, SHA-256 {receipt['executable']}")
 
