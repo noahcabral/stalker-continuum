@@ -23,6 +23,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 Import-Module (Join-Path $PSScriptRoot 'AwpAddons.psm1') -Force
 $reader = [Xml.XmlReader]::Create((Join-Path $PSScriptRoot 'AwpLauncher.xaml'))
 try { $form = [Windows.Markup.XamlReader]::Load($reader) } finally { $reader.Dispose() }
+$form.Icon = [Windows.Media.Imaging.BitmapFrame]::Create([Uri]::new((Join-Path $PSScriptRoot 'Continuum.ico')))
 
 function Get-Control([string]$Name) {
     $control = $form.FindName($Name)

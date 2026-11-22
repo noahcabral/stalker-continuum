@@ -17,11 +17,13 @@ compiler = Path(os.environ["WINDIR"]) / "Microsoft.NET/Framework64/v4.0.30319/cs
 executable_name = "STALKER-Continuum-Launcher.exe"
 
 
-def compile_code(target, output_path, sources, references, bundle=None):
+def compile_code(target, output_path, sources, references, bundle=None, icon=None):
     command = [str(compiler), "/nologo", "/optimize+", f"/target:{target}", f"/out:{output_path}"]
     command.extend(f"/reference:{name}" for name in references)
     if bundle:
         command.append(f"/resource:{bundle},AwpLauncher.bundle.zip")
+    if icon:
+        command.append(f"/win32icon:{icon}")
     command.extend(str(path) for path in sources)
     subprocess.run(command, check=True)
 
@@ -60,7 +62,8 @@ def build():
             archive.write(path, name)
     exe = output / executable_name
     compile_code("winexe", exe, (installer / "AwpLauncherBootstrap.cs", metadata),
-                 ("System.IO.Compression.dll", "System.Windows.Forms.dll"), bundle)
+                 ("System.IO.Compression.dll", "System.Windows.Forms.dll"), bundle=bundle,
+                 icon=launcher / "Continuum.ico")
 
     receipt = {"version": version, "executableName": executable_name, "executable": sha(exe),
                "bundle": sha(bundle),
