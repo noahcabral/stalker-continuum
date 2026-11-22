@@ -1496,7 +1496,8 @@ void CActor::shedule_Update(u32 DT)
             }
             else
             {
-                if (m_pPersonWeLookingAt && pEntityAlive->g_Alive() && m_pPersonWeLookingAt->IsTalkEnabled())
+                if (m_pPersonWeLookingAt && pEntityAlive && pEntityAlive->g_Alive() &&
+                    !pEntityAlive->cast_actor() && m_pPersonWeLookingAt->IsTalkEnabled())
                 {
                     m_sDefaultObjAction = m_sCharacterUseAction;
                 }
