@@ -9,6 +9,8 @@ Start-Process .\build\STALKER-Continuum-Launcher.exe -ArgumentList '--verify-lay
 
 The launcher works from outside the game directory. When it needs to install, it streams the published baseline to a staging directory and verifies its archive parts and game files against the bundled SHA-256 manifests. A healthy install offers Play. The launcher shows Repair when required and Update when a compatible game package is available.
 
+Launcher 1.0.2 checks for game and launcher updates when it opens and once a minute while open. **Update launcher** verifies the new executable and restarts the app when a newer launcher is available.
+
 ## Release versions
 
 Use matching versions in `launcher/version.json` and the GitHub release tag `continuum-launcher-vX.Y.Z`. Attach the built `STALKER-Continuum-Launcher.exe` to the release. The launcher checks that release stream independently from game updates.

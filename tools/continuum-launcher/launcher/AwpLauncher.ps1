@@ -1,4 +1,4 @@
-﻿param([switch]$Preview, [switch]$VerifyLayout, [switch]$Portable, [string]$Origin)
+﻿param([switch]$Preview, [switch]$VerifyLayout, [switch]$Portable, [string]$Origin, [string]$LauncherUpdateRequest)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'AwpInstallUi.ps1')

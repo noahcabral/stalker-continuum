@@ -11,7 +11,7 @@ function Read-AwpLauncherVersion([string]$LauncherFolder) {
     return [version]$record.version
 }
 
-function Find-AwpLauncherRelease([object[]]$Releases) {
+function Find-AwpLauncherRelease([object[]]$Releases, [switch]$Details) {
     $assetName = 'STALKER-Continuum-Launcher.exe'
     $base = 'https://github.com/noahcabral/stalker-continuum/releases/download'
     $valid = foreach ($release in $Releases) {
@@ -23,9 +23,12 @@ function Find-AwpLauncherRelease([object[]]$Releases) {
         $asset = $assets[0]
         if ($asset.browser_download_url -cne "$base/$($release.tag_name)/$assetName" -or
             $asset.digest -cnotmatch '^sha256:[a-f0-9]{64}$' -or [long]$asset.size -le 0) { continue }
-        $version
+        [pscustomobject]@{ Version=$version; Url=$asset.browser_download_url; Hash=$asset.digest.Substring(7); Size=[long]$asset.size }
     }
-    $valid | Sort-Object -Descending | Select-Object -First 1
+    $selected = $valid | Sort-Object Version -Descending | Select-Object -First 1
+    if ($selected) {
+        if ($Details) { $selected } else { $selected.Version }
+    }
 }
 
 function Test-AwpRuntimeReceiptPath([string]$Path) {

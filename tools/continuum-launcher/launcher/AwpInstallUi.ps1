@@ -163,28 +163,31 @@ function Show-AwpInitialFolderPicker {
     }
 }
 
-function Start-AwpInstallWork([string]$Action) {
+function Start-AwpInstallWork([string]$Action, [bool]$Background = $false) {
     if ($setup.Process) { return }
     try {
         $setup.Output = [IO.Path]::GetTempFileName()
         $setup.Errors = [IO.Path]::GetTempFileName()
         $setup.Action = $Action
+        $setup.Background = $Background
         $worker = Join-Path $PSScriptRoot 'AwpInstallWorker.ps1'
         $hostPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
         $arguments = '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File "{0}" -Action {1}' -f $worker,$Action
         if ($installRoot) { $arguments += ' -InstallRoot "{0}"' -f $installRoot.TrimEnd('\') }
         if ($Action -eq 'Repair' -and $setup.RepairApproval) { $arguments += ' -RepairApproval ' + $setup.RepairApproval }
+        if ($Action -eq 'UpdateLauncher') { $arguments += ' -LauncherUpdateRequest "{0}"' -f $LauncherUpdateRequest }
         $setup.Process = Start-Process -FilePath $hostPath -ArgumentList $arguments -WindowStyle Hidden -PassThru `
             -RedirectStandardOutput $setup.Output -RedirectStandardError $setup.Errors
         $setup.Locate.IsEnabled = $false
         $setup.CheckVersions.IsEnabled = $false
         $setup.VerifyFiles.IsEnabled = $false
-        if ($Action -eq 'CheckVersions') { $status.Text = 'Checking versions...' }
-        if ($Action -ne 'CheckUpdate') {
+        $setup.LauncherUpdateButton.IsEnabled = $false
+        if ($Action -eq 'CheckVersions' -and !$Background) { $status.Text = 'Checking versions...' }
+        if ($Action -notin 'CheckUpdate','CheckVersions') {
             $play.IsEnabled = $false
             $update.IsEnabled = $false
         }
-        if ($Action -in 'Install','Repair','Update','Recover','RecoverRepair','VerifyFiles') {
+        if ($Action -in 'Install','Repair','Update','Recover','RecoverRepair','VerifyFiles','UpdateLauncher') {
             $setup.Progress.Value = 0
             $setup.Progress.IsIndeterminate = $true
             $setup.Progress.Visibility = 'Visible'
@@ -198,6 +201,7 @@ function Start-AwpInstallWork([string]$Action) {
         $setup.PromptInstall = $false
         $setup.Locate.IsEnabled = $true
         $setup.CheckVersions.IsEnabled = $true
+        $setup.LauncherUpdateButton.IsEnabled = $true
         Set-AwpInstallActions $state $_.Exception.Message
     }
 }
@@ -226,6 +230,7 @@ function Initialize-AwpInstallUi {
     $setup.Damaged = @()
     $setup.RepairApproval = ''
     $setup.Update = $null
+    $setup.Background = $false
     $setup.Progress = [Windows.Controls.ProgressBar]::new()
     $setup.Progress.Height = 7
     $setup.Progress.Margin = [Windows.Thickness]::new(0,12,0,0)
@@ -238,6 +243,13 @@ function Initialize-AwpInstallUi {
     [void]$footer.Children.Remove($status)
     $status.Margin = [Windows.Thickness]::new(0)
     [void]$panel.Children.Add($status)
+    $setup.LauncherUpdateButton = [Windows.Controls.Button]::new()
+    $setup.LauncherUpdateButton.Content = 'Update launcher'
+    $setup.LauncherUpdateButton.HorizontalAlignment = 'Left'
+    $setup.LauncherUpdateButton.Margin = [Windows.Thickness]::new(0,8,0,0)
+    $setup.LauncherUpdateButton.Visibility = 'Collapsed'
+    $setup.LauncherUpdateButton.Add_Click({ Start-AwpInstallWork 'UpdateLauncher' })
+    [void]$panel.Children.Add($setup.LauncherUpdateButton)
     [void]$panel.Children.Add($setup.Progress)
     [void]$footer.Children.Add($panel)
 
@@ -287,6 +299,9 @@ function Initialize-AwpInstallUi {
 
     $setup.Timer = [Windows.Threading.DispatcherTimer]::new()
     $setup.Timer.Interval = [TimeSpan]::FromMilliseconds(300)
+    $setup.VersionTimer = [Windows.Threading.DispatcherTimer]::new()
+    $setup.VersionTimer.Interval = [TimeSpan]::FromMinutes(1)
+    $setup.VersionTimer.Add_Tick({ Start-AwpInstallWork 'CheckVersions' $true })
     $setup.Timer.Add_Tick({
         $row = Get-Content -LiteralPath $setup.Output -Tail 1 -ErrorAction SilentlyContinue
         $event = if ($row) { try { $row | ConvertFrom-Json -ErrorAction Stop } catch { } }
@@ -307,18 +322,32 @@ function Initialize-AwpInstallUi {
         $setup.Locate.IsEnabled = $true
         $setup.CheckVersions.IsEnabled = $true
         $setup.VerifyFiles.IsEnabled = $setup.State -in 'Ready','Broken'
+        $setup.LauncherUpdateButton.IsEnabled = $true
         $update.IsEnabled = $true
+        if ($setup.Action -eq 'UpdateLauncher') {
+            if ($event -and $event.Kind -eq 'Result') {
+                $status.Text = $event.Message
+                $form.Close()
+            } else {
+                $message = if ($event -and $event.Message) { $event.Message } else { 'The launcher update did not finish.' }
+                Set-AwpInstallActions $setup.State $message
+            }
+            return
+        }
         if ($setup.Action -in 'VerifyFiles','CheckVersions') {
             $play.IsEnabled = $setup.State -in 'Ready','Recovery','RepairRecovery','Broken','Absent'
             if (!$event -or $event.Kind -ne 'Result') {
-                $status.Text = if ($event -and $event.Message) { $event.Message } else { 'The check did not finish.' }
+                if (!$setup.Background) {
+                    $status.Text = if ($event -and $event.Message) { $event.Message } else { 'The check did not finish.' }
+                }
             } elseif ($setup.Action -eq 'VerifyFiles') {
                 Show-AwpVerificationResult $event
             } else {
                 Set-AwpVersionSummary $event.State $event.GameVersion $event
-                $status.Text = if ($event.Message) { $event.Message } else { 'Versions checked.' }
-                if (!$event.Message -and $event.State -eq 'Ready') {
-                    $setup.Update = $event.Update
+                if (!$setup.Background) { $status.Text = if ($event.Message) { $event.Message } else { 'Versions checked.' } }
+                if (!$event.Message) {
+                    $setup.LauncherUpdateButton.Visibility = if ($event.LauncherUpdate -and $LauncherUpdateRequest) { 'Visible' } else { 'Collapsed' }
+                    $setup.Update = if ($event.State -eq 'Ready') { $event.Update } else { $null }
                     $update.Visibility = if ($setup.Update) { 'Visible' } else { 'Collapsed' }
                 }
             }
@@ -346,16 +375,19 @@ function Initialize-AwpInstallUi {
         if ($event.State -eq 'Ready') {
             Save-AwpRoot
             Update-AwpRootLabels
-            Start-AwpInstallWork 'CheckUpdate'
+            Start-AwpInstallWork 'CheckVersions' $true
         } elseif ($event.State -eq 'Absent') {
             if ($prompt) { if (Confirm-AwpWork 'Install') { Start-AwpInstallWork 'Install' } }
             else { Show-AwpInitialFolderPicker }
+            if (!$setup.Process) { Start-AwpInstallWork 'CheckVersions' $true }
+        } else {
+            Start-AwpInstallWork 'CheckVersions' $true
         }
     })
     $form.Add_Closing({
         param($sender,$event)
         if ($setup.Process) {
-            if (!$setup.Process.HasExited -and $setup.Action -in 'Install','Repair','Update','Recover','RecoverRepair') {
+            if (!$setup.Process.HasExited -and $setup.Action -in 'Install','Repair','Update','Recover','RecoverRepair','UpdateLauncher') {
                 $event.Cancel = $true
                 $status.Text = 'Wait for the current installation task to finish.'
                 return
@@ -369,6 +401,7 @@ function Initialize-AwpInstallUi {
             $setup.Process.Dispose()
             $setup.Process = $null
         }
+        $setup.VersionTimer.Stop()
     })
     Set-AwpInstallActions 'Absent'
 }
@@ -377,11 +410,13 @@ function Start-AwpInitialProbe {
     $form.Add_ContentRendered({
         if ($setup.ProbeStarted) { return }
         $setup.ProbeStarted = $true
+        $setup.VersionTimer.Start()
         if ($installRoot) {
             Set-AwpInstallActions 'Checking'
             Start-AwpInstallWork 'Scan'
         } else {
             Show-AwpInitialFolderPicker
+            if (!$setup.Process) { Start-AwpInstallWork 'CheckVersions' $true }
         }
     })
 }

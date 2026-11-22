@@ -1,7 +1,8 @@
 ﻿param(
-    [Parameter(Mandatory)][ValidateSet('Scan','Install','Repair','CheckUpdate','Update','Recover','RecoverRepair','VerifyFiles','CheckVersions')][string]$Action,
+    [Parameter(Mandatory)][ValidateSet('Scan','Install','Repair','CheckUpdate','Update','Recover','RecoverRepair','VerifyFiles','CheckVersions','UpdateLauncher')][string]$Action,
     [AllowEmptyString()][string]$InstallRoot = '',
-    [ValidatePattern('^(|[a-f0-9]{64})$')][string]$RepairApproval = ''
+    [ValidatePattern('^(|[a-f0-9]{64})$')][string]$RepairApproval = '',
+    [string]$LauncherUpdateRequest = ''
 )
 
 Set-StrictMode -Version Latest
@@ -54,6 +55,51 @@ function Get-AwpTrackedGameVersion([string]$State, [version]$InstalledVersion) {
     }
 }
 
+function Prepare-AwpLauncherUpdate {
+    $bundle = Split-Path -Parent $PSScriptRoot
+    $request = Join-Path $bundle 'launcher-update.request'
+    if ($LauncherUpdateRequest -cne $request -or [IO.File]::Exists($request)) {
+        throw 'Open the launcher executable to update it.'
+    }
+    $current = Read-AwpLauncherVersion $PSScriptRoot
+    $available = Find-AwpLauncherRelease @(Get-AwpPublicReleases) -Details
+    if (!$available -or $available.Version -le $current) { throw 'The launcher is up to date.' }
+    if ($available.Size -gt 64MB) { throw 'The launcher download is unexpectedly large.' }
+    $candidate = Join-Path $bundle 'next-launcher.exe'
+    try {
+        Report-Progress "Downloading launcher $($available.Version)..." 0
+        $asset = [AwpInstall.Part]::new()
+        $asset.Url, $asset.Size = $available.Url, $available.Size
+        $inputStream = [AwpInstall.Network]::OpenAsset($asset)
+        try {
+            $output = [IO.File]::Open($candidate, 'CreateNew', 'Write', 'None')
+            try {
+                $buffer = [byte[]]::new(65536)
+                while (($read = $inputStream.Read($buffer, 0, $buffer.Length)) -ne 0) {
+                    if ($output.Length + $read -gt $available.Size) { throw 'The launcher download exceeded its expected size.' }
+                    $output.Write($buffer, 0, $read)
+                }
+                if ($output.Length -ne $available.Size) { throw 'The launcher download ended early.' }
+            } finally { $output.Dispose() }
+        } finally { $inputStream.Dispose() }
+        if ((Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash -ne $available.Hash -or
+            [Reflection.AssemblyName]::GetAssemblyName($candidate).Version.ToString(3) -cne $available.Version.ToString()) {
+            throw 'The downloaded launcher did not match the published version and checksum.'
+        }
+        Report-Progress 'Checking the updated launcher...' 95
+        $probe = Start-Process -FilePath $candidate -ArgumentList '--verify-layout' -WindowStyle Hidden -PassThru
+        try {
+            if (!$probe.WaitForExit(20000)) { $probe.Kill(); throw 'The new launcher did not finish its startup check.' }
+            if ($probe.ExitCode -ne 0) { throw 'The new launcher failed its startup check.' }
+        } finally { $probe.Dispose() }
+        [IO.File]::WriteAllLines($request, @($available.Version.ToString(),$available.Hash))
+        Write-Receipt @{ Kind='Result'; Message="Restarting the launcher at $($available.Version)." }
+    } catch {
+        if ([IO.File]::Exists($candidate)) { [IO.File]::Delete($candidate) }
+        throw
+    }
+}
+
 function Report-Versions([string]$State, [string]$GameVersion, [version]$UpdateBase) {
     $current = Read-AwpLauncherVersion $PSScriptRoot
     $message = ''
@@ -100,6 +146,7 @@ try {
     Add-Type -Path (Join-Path $PSScriptRoot 'AwpInstallCore.dll')
     Import-Module (Join-Path $PSScriptRoot 'AwpVersionCheck.psm1') -Force
     Import-Module (Join-Path $PSScriptRoot 'AwpUpdate.psm1') -Force
+    if ($Action -eq 'UpdateLauncher') { Prepare-AwpLauncherUpdate; return }
     if ($Action -eq 'CheckVersions' -and !$InstallRoot) { Report-Versions 'Absent' '' $null; return }
     $root = [AwpInstall.Baseline]::Root($InstallRoot)
     $client = Join-Path $root 'bin\xrEngine.exe'
