@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "placeable-mines",
+  "name": "Placeable Mines",
+  "proof": [
+    {
+      "path": "gamedata/scripts/m_mines.script",
+      "contains": "-- File:   Mines"
+    },
+    {
+      "path": "gamedata/configs/misc/items.ltx",
+      "contains": "= m_mines.add_actor_mine"
+    }
+  ]
+}

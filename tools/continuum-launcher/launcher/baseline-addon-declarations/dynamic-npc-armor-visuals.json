@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "dynamic-npc-armor-visuals",
+  "name": "Dynamic NPC Armor Visuals",
+  "proof": [
+    {
+      "path": "gamedata/scripts/dynamic_npc_armor_visuals.script",
+      "contains": "RegisterScriptCallback(\"npc_on_item_take\", onTake)"
+    },
+    {
+      "path": "gamedata/configs/dynamic_npc_armor_visuals.ltx"
+    }
+  ]
+}

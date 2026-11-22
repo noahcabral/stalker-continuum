@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "dynamic-news",
+  "name": "Dynamic News",
+  "proof": [
+    {
+      "path": "gamedata/scripts/dynamic_news_manager.script",
+      "contains": "Dynamic News by ARS Team"
+    },
+    {
+      "path": "gamedata/scripts/dynamic_news_options.script"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "advanced-weapon-pack",
+  "name": "Advanced Weapon Pack",
+  "proof": [
+    {
+      "path": "gamedata/configs/weapons/awp_native_scope_namespace.ltx",
+      "contains": "awp_native_scope_mount = true"
+    },
+    {
+      "path": "gamedata/configs/weapons/AR/w_lr300ml.ltx",
+      "contains": "awp_aim_enter_rate"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "iwp-survival-needs",
+  "name": "IWP Survival Needs",
+  "proof": [
+    {
+      "path": "gamedata/scripts/iwp_survival_needs.script",
+      "contains": "RegisterScriptCallback(\"actor_on_update\", update)"
+    },
+    {
+      "path": "gamedata/scripts/iwp_survival_needs.script",
+      "contains": "thirst_rate"
+    }
+  ]
+}

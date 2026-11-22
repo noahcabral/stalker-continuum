@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "outfit-loot",
+  "name": "Outfit Loot",
+  "proof": [
+    {
+      "path": "gamedata/scripts/outfit_marauder.script"
+    },
+    {
+      "path": "gamedata/configs/outfit_marauder.ltx"
+    },
+    {
+      "path": "gamedata/scripts/death_manager.script",
+      "contains": "outfit_marauder.generate(npc)"
+    }
+  ]
+}

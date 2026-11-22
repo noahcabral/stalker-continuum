@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "bloodscreen",
+  "name": "Bloodscreen",
+  "proof": [
+    {
+      "path": "gamedata/scripts/gunsl_bloodscreen.script"
+    },
+    {
+      "path": "gamedata/scripts/bind_stalker.script",
+      "contains": "gunsl_bloodscreen.Update(delta)"
+    }
+  ]
+}

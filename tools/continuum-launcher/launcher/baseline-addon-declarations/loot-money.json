@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "loot-money",
+  "name": "Loot Money",
+  "proof": [
+    {
+      "path": "gamedata/scripts/lootmoney.script",
+      "contains": "function lootmoney(npc)"
+    },
+    {
+      "path": "gamedata/scripts/xr_motivator.script",
+      "contains": "lootmoney.lootmoney(obj)"
+    }
+  ]
+}

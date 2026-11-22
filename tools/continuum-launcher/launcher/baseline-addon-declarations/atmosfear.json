@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "atmosfear",
+  "name": "AtmosFear",
+  "version": "3",
+  "proof": [
+    {
+      "path": "gamedata/scripts/atmosfear_options.script",
+      "contains": "for AtmosFear 3"
+    },
+    {
+      "path": "gamedata/scripts/level_weathers.script",
+      "contains": "function atmosfear_init()"
+    },
+    {
+      "path": "gamedata/scripts/surge_manager.script",
+      "contains": "atmosfear_options.config"
+    }
+  ]
+}

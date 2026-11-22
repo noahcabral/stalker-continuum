@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "tactical-compass",
+  "name": "Tactical Compass",
+  "proof": [
+    {
+      "path": "gamedata/scripts/compass.script",
+      "contains": "UIFlatCompass"
+    },
+    {
+      "path": "gamedata/scripts/compass.script",
+      "contains": "RegisterScriptCallback(\"actor_on_first_update\""
+    }
+  ]
+}

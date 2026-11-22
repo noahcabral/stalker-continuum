@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "immersive-travel",
+  "name": "Immersive Travel",
+  "proof": [
+    {
+      "path": "gamedata/scripts/ka_travel.script",
+      "contains": "-- Immersive Travel"
+    },
+    {
+      "path": "gamedata/configs/gameplay/dialogs.xml",
+      "contains": "ka_travel_dialog.init_hub_provider_dialog"
+    }
+  ]
+}
