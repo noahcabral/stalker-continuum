@@ -121,6 +121,7 @@ void CMainMenu::script_register(lua_State* luaState)
             ]
             .def("SetConnectionErrCb", &CServerList::SetConnectionErrCb)
             .def("ConnectToSelected", &CServerList::ConnectToSelected)
+            .def("RefreshCampaignLan", &CServerList::RefreshCampaignLan)
             .def("SetFilters", &CServerList::SetFilters)
             .def("SetPlayerName", &CServerList::SetPlayerName)
             .def("RefreshList", &CServerList::RefreshGameSpyList)

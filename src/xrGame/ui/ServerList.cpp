@@ -87,6 +87,16 @@ CGameSpy_BrowsersWrapper& CServerList::browser()
 
 void CServerList::Update()
 {
+    if (m_campaignLanSearch.valid() &&
+        m_campaignLanSearch.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+    {
+        m_campaignLanHosts = m_campaignLanSearch.get();
+        m_list[LST_SERVER].Clear();
+        ClearSrvItems();
+        Msg("* Continuum LAN discovery found %u host(s)", static_cast<unsigned>(m_campaignLanHosts.size()));
+        RefreshList();
+    }
+
     if (m_need_refresh_fr < Device.dwFrame + 10)
         RefreshList_internal();
 
@@ -564,6 +574,17 @@ void CServerList::InitFromXml(CUIXml& xml_doc, LPCSTR path)
 
 void CServerList::ConnectToSelected()
 {
+    if (m_campaignLanMode)
+    {
+        if (auto* item = smart_cast<CUIListItemServer*>(m_list[LST_SERVER].GetSelectedItem()))
+        {
+            xr_string command;
+            item->CreateConsoleCommand(command, m_playerName.c_str(), "", "");
+            Console->Execute(command.c_str());
+        }
+        return;
+    }
+
     if (!MainMenu()->ValidateCDKey())
         return;
 
@@ -770,6 +791,14 @@ void CServerList::RefreshList_internal()
     m_list[LST_SERVER].Clear();
     ClearSrvItems();
 
+    if (m_campaignLanMode)
+    {
+        RenderCampaignLanHosts();
+        UpdateSizes();
+        RestoreCurItem();
+        return;
+    }
+
     auto& bro = browser();
     u32 NumServersFound = bro.GetServersCount();
     m_tmp_srv_lst.resize(NumServersFound);
@@ -790,6 +819,59 @@ void CServerList::RefreshList_internal()
     UpdateSizes();
     RestoreCurItem();
 };
+
+void CServerList::RenderCampaignLanHosts()
+{
+    std::vector<size_t> order(m_campaignLanHosts.size());
+    for (size_t index = 0; index < order.size(); ++index)
+        order[index] = index;
+    std::stable_sort(order.begin(), order.end(), [this](size_t a, size_t b) {
+        if (!m_sort_ascending)
+            std::swap(a, b);
+        const auto& left = m_campaignLanHosts[a];
+        const auto& right = m_campaignLanHosts[b];
+        switch (m_sort_mode)
+        {
+        case SORT_MAP: return left.map < right.map;
+        case SORT_PLAYERSCOUNT: return left.players < right.players;
+        case SORT_PING: return left.latency < right.latency;
+        case SORT_GAMEVERSION: return left.mapVersion < right.mapVersion;
+        default: return left.address < right.address;
+        }
+    });
+
+    for (const size_t index : order)
+    {
+        const auto& host = m_campaignLanHosts[index];
+        auto& row = m_itemInfo.info;
+        row.server = ("Continuum (" + host.address + ")").c_str();
+        row.address = (host.address + "/port=" + std::to_string(host.port)).c_str();
+        row.map = host.map.c_str();
+        row.game = "Co-op";
+        row.players = (std::to_string(host.players) + "/" + std::to_string(host.capacity)).c_str();
+        row.ping = std::to_string(host.latency).c_str();
+        row.version = host.mapVersion.c_str();
+        row.icons = {};
+        row.Index = static_cast<int>(index);
+        m_itemInfo.size.height = m_list[LST_SERVER].GetItemHeight();
+        auto* item = GetFreeItem();
+        item->InitItemServer(m_itemInfo);
+        m_list[LST_SERVER].AddExistingItem(item);
+        item->SetAutoDelete(false);
+    }
+}
+
+void CServerList::RefreshCampaignLan()
+{
+    if (!m_campaignLanMode)
+    {
+        m_campaignLanMode = true;
+        NetRadioChanged(true);
+        SetSortFunc_internal(SORT_PING, SORT_TYPE_ASCENDING, false);
+    }
+    if (!m_campaignLanSearch.valid())
+        m_campaignLanSearch = std::async(std::launch::async, DiscoverCampaignLanHosts);
+}
 
 void CServerList::RefreshQuick()
 {

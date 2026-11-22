@@ -4,6 +4,8 @@
 
 #include "xrUICore/ListBox/UIListBox.h"
 #include "UIListItemServer.h"
+#include "CampaignLanDiscovery.h"
+#include <future>
 #include "xrUICore/Windows/UIFrameWindow.h"
 #include "xrUICore/Windows/UIFrameLineWnd.h"
 #include "xrUICore/EditBox/UIEditBox.h"
@@ -81,6 +83,7 @@ public:
     void NetRadioChanged(bool Local);
     virtual void RefreshGameSpyList(bool Local);
     void RefreshQuick();
+    void RefreshCampaignLan();
     void ShowServerInfo();
     virtual void RefreshList();
 
@@ -160,6 +163,10 @@ protected:
     u32 m_last_retreived_index;
     u32 m_need_refresh_fr;
     void RefreshList_internal();
+    void RenderCampaignLanHosts();
+    bool m_campaignLanMode = false;
+    std::vector<CampaignLanHost> m_campaignLanHosts;
+    std::future<std::vector<CampaignLanHost>> m_campaignLanSearch;
 
     CGameSpy_BrowsersWrapper::SubscriberIdx m_subscriber_id;
 

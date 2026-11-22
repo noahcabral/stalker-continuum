@@ -2122,6 +2122,8 @@ target_sources(xrGame PRIVATE
     ui/MMSound.h
     ui/Restrictions.cpp
     ui/Restrictions.h
+    ui/CampaignLanDiscovery.cpp
+    ui/CampaignLanDiscovery.h
     ui/ServerList.cpp
     ui/ServerList_GameSpy_func.cpp
     ui/ServerList.h
