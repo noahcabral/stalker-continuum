@@ -6,7 +6,7 @@ S.T.A.L.K.E.R.: Continuum is a standalone multiplayer mod for Windows that bring
 
 Use the S.T.A.L.K.E.R.: Continuum Launcher. It can find an existing installation or install into a folder you choose. Its Settings page edits game options, checks launcher and game versions, and verifies known game files. The Saves and Add-ons pages show what is present in the selected installation. The launcher offers Repair when it detects an incomplete install, and shows Update when a compatible update is available.
 
-- [Download the Continuum Launcher](https://github.com/noahcabral/stalker-continuum/releases/tag/continuum-launcher-v1.0.0)
+- [Download the Continuum Launcher](https://github.com/noahcabral/stalker-continuum/releases/tag/continuum-launcher-v1.0.1)
 - [Launcher source and build instructions](tools/continuum-launcher)
 - [Report an S.T.A.L.K.E.R.: Continuum issue](https://github.com/noahcabral/stalker-continuum/issues/new)
 

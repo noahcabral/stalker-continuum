@@ -8,8 +8,8 @@ namespace AwpInstall {
     public static class Network {
         private static HttpWebRequest Request(string address) {
             Uri uri;
-            if (!Uri.TryCreate(address, UriKind.Absolute, out uri) || uri.Scheme != "https" || uri.Host != "github.com" ||
-                !uri.AbsolutePath.StartsWith("/noahcabral/xr64multiplayer/releases/download/", StringComparison.Ordinal))
+            if (!Uri.TryCreate(address, UriKind.Absolute, out uri) ||
+                !uri.AbsoluteUri.StartsWith(Baseline.ReleaseBaseUrl, StringComparison.Ordinal))
                 throw new IOException("Unexpected release download address.");
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
             var request = (HttpWebRequest)WebRequest.Create(uri);

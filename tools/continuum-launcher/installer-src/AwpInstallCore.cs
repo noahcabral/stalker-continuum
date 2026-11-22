@@ -22,6 +22,7 @@ namespace AwpInstall {
 
     public static class Baseline {
         public const string Tag = "awp-standalone-20261121-01-baseline";
+        internal const string ReleaseBaseUrl = "https://github.com/noahcabral/stalker-continuum/releases/download/";
         public const string Marker = ".awp-baseline-release";
         public const string Profile = "appdata/awp-user.ltx";
         private static readonly Regex Digest = new Regex(@"^[0-9a-f]{64}$", RegexOptions.CultureInvariant);
@@ -115,7 +116,7 @@ namespace AwpInstall {
             foreach (var asset in release.Assets) {
                 if (asset == null || String.IsNullOrEmpty(asset.Name) || asset.Size <= 0 || asset.Digest == null ||
                     !asset.Digest.StartsWith("sha256:", StringComparison.Ordinal) || !Digest.IsMatch(asset.Digest.Substring(7)) ||
-                    asset.Url != "https://github.com/noahcabral/stalker-continuum/releases/download/" + Tag + "/" + asset.Name ||
+                    asset.Url != ReleaseBaseUrl + Tag + "/" + asset.Name ||
                     map.ContainsKey(asset.Name)) throw new InvalidDataException("Invalid baseline asset metadata.");
                 map.Add(asset.Name, asset);
             }
