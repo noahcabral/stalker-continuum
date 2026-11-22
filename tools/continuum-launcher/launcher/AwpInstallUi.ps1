@@ -407,7 +407,7 @@ function Initialize-AwpInstallUi {
 }
 
 function Start-AwpInitialProbe {
-    $form.Add_ContentRendered({
+    $form.Add_Loaded({
         if ($setup.ProbeStarted) { return }
         $setup.ProbeStarted = $true
         $setup.VersionTimer.Start()

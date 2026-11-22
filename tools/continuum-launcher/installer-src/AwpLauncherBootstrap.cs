@@ -28,8 +28,8 @@ internal static class Program {
                 CreateNoWindow = true,
                 WorkingDirectory = temp,
             };
-            // Use Windows PowerShell module discovery even when started from PowerShell 7.
-            launch.EnvironmentVariables.Remove("PSModulePath");
+            // Use the Windows PowerShell modules even when launched from another PowerShell or profile.
+            launch.EnvironmentVariables["PSModulePath"] = Path.Combine(system, "WindowsPowerShell", "v1.0", "Modules");
             using (var process = Process.Start(launch)) {
                 process.WaitForExit();
                 if (process.ExitCode != 0) throw new InvalidOperationException("Windows PowerShell could not start the launcher.");
