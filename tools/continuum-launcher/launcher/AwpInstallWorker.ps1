@@ -82,7 +82,7 @@ function Prepare-AwpLauncherUpdate {
                 if ($output.Length -ne $available.Size) { throw 'The launcher download ended early.' }
             } finally { $output.Dispose() }
         } finally { $inputStream.Dispose() }
-        if ((Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash -ne $available.Hash -or
+        if ([AwpInstall.Baseline]::FileHash($candidate) -cne $available.Hash -or
             [Reflection.AssemblyName]::GetAssemblyName($candidate).Version.ToString(3) -cne $available.Version.ToString()) {
             throw 'The downloaded launcher did not match the published version and checksum.'
         }

@@ -34,7 +34,13 @@ try {
         $newAssembly.Version.ToString(3) -cne $request[0]) { throw 'Launcher update version changed.' }
 
     [IO.File]::Copy($newPath, $prepared)
-    if ((Get-FileHash -LiteralPath $prepared -Algorithm SHA256).Hash -ne $request[1]) {
+    $inputStream = [IO.File]::OpenRead($prepared)
+    try {
+        $algorithm = [Security.Cryptography.SHA256]::Create()
+        try { $digest = [BitConverter]::ToString($algorithm.ComputeHash($inputStream)).Replace('-', '').ToLowerInvariant() }
+        finally { $algorithm.Dispose() }
+    } finally { $inputStream.Dispose() }
+    if ($digest -cne $request[1]) {
         throw 'Launcher update checksum changed.'
     }
     [IO.File]::Replace($prepared, $targetPath, $backup)
